@@ -63,6 +63,21 @@ export class AuthzError extends Error {
   }
 }
 
+/** A read-only summary of the active authorization policy, for IAM views. */
+export function policySummary(): {
+  trustDomain: string;
+  permissions: Record<Permission, Relation[]>;
+  writers: string[];
+  publicReads: boolean;
+} {
+  return {
+    trustDomain: trustDomain(),
+    permissions: PERMISSION_RELATIONS,
+    writers: [...writerSubjects()],
+    publicReads: flags.boolean("public-reads", true),
+  };
+}
+
 /** Throw an {@link AuthzError} unless the principal is authorized. */
 export function authorize(principal: Principal | null, permission: Permission): void {
   if (can(principal, permission)) return;

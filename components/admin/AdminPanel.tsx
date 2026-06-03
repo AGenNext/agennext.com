@@ -12,14 +12,14 @@ const WRITER_HEADERS = {
   "x-spiffe-id": "spiffe://agennext.com/api/fabric/writer",
 };
 
-type Tab = "overview" | "authoring" | "traces";
+type Tab = "overview" | "authoring" | "iam" | "traces";
 
 export function AdminPanel() {
   const [tab, setTab] = useState<Tab>("overview");
   return (
     <div>
       <div className="flex gap-1 border-b border-border">
-        {(["overview", "authoring", "traces"] as Tab[]).map((t) => (
+        {(["overview", "authoring", "iam", "traces"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -34,6 +34,7 @@ export function AdminPanel() {
       <div className="mt-6">
         {tab === "overview" && <Overview />}
         {tab === "authoring" && <Authoring />}
+        {tab === "iam" && <Iam />}
         {tab === "traces" && <Traces />}
       </div>
     </div>
@@ -246,6 +247,67 @@ function ExtractPanel() {
             )}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------- iam ------------------------------- */
+
+interface IamModel {
+  trustDomain: string;
+  publicReads: boolean;
+  permissions: Record<string, string[]>;
+  writers: string[];
+  agentIdentities: { id: string; name: string; spiffeId: string }[];
+}
+
+function Iam() {
+  const [iam, setIam] = useState<IamModel | null>(null);
+  useEffect(() => {
+    fetch("/api/iam").then((r) => r.json()).then((d) => setIam(d.data)).catch(() => {});
+  }, []);
+  if (!iam) return <p className="text-sm text-muted">Loading…</p>;
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-4">
+        <div>
+          <SectionLabel>Trust domain (SPIFFE)</SectionLabel>
+          <p className="mt-2 font-mono text-sm">spiffe://{iam.trustDomain}</p>
+          <p className="mt-1 text-xs text-muted">
+            Public reads: {iam.publicReads ? "enabled" : "disabled"}
+          </p>
+        </div>
+        <div>
+          <SectionLabel>Permissions → relations (Permify)</SectionLabel>
+          <ul className="card mt-2 divide-y divide-border text-sm">
+            {Object.entries(iam.permissions).map(([perm, rels]) => (
+              <li key={perm} className="flex justify-between px-3 py-2">
+                <span className="font-mono text-xs">{perm}</span>
+                <span className="text-muted">{rels.join(" · ")}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <SectionLabel>Writers</SectionLabel>
+          <ul className="mt-2 space-y-1 font-mono text-xs text-muted">
+            {iam.writers.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div>
+        <SectionLabel>Agent identities</SectionLabel>
+        <ul className="card mt-2 divide-y divide-border text-sm">
+          {iam.agentIdentities.map((a) => (
+            <li key={a.id} className="px-3 py-2">
+              <div className="font-medium">{a.name}</div>
+              <div className="mt-0.5 font-mono text-[11px] text-muted">{a.spiffeId}</div>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

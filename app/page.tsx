@@ -15,6 +15,16 @@ export default async function Home() {
   const typeCount = new Set<string>();
   for (const n of items) for (const t of getTypes(n)) typeCount.add(t);
 
+  const cat = (c: string) => items.filter((n) => getString(n, "applicationCategory") === c).length;
+  const blocks = cat("AgentTemplate") + cat("Skill") + cat("Tool") + cat("Knowledge");
+  const foundation = items.filter((n) => slugOf(n["@id"])?.startsWith("tech-")).length;
+  const pillars = [
+    { href: "/agents", label: "Agents", desc: "Autonomous workers over the fabric", count: cat("Agent") },
+    { href: "/catalog", label: "Building blocks", desc: "Templates · skills · tools · knowledge", count: blocks },
+    { href: "/stack", label: "Registry", desc: "The open, cloud-native foundation", count: foundation },
+    { href: "/repos", label: "Repositories", desc: "The org's codebase as a graph", count: cat("Repository") },
+  ];
+
   const graphNodes: GraphNodeLite[] = items.map((n) => ({
     id: n["@id"],
     slug: slugOf(n["@id"]),
@@ -42,26 +52,26 @@ export default async function Home() {
       <section className="hero-glow border-b border-border">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <p className="pill inline-block px-3 py-1 text-xs text-muted">
-            open · protocol-first · cloud-native
+            open · enterprise · cloud-native
           </p>
-          <h1 className="mt-4 max-w-2xl text-4xl font-semibold tracking-tight sm:text-5xl">
-            A Schema.org data fabric you can{" "}
-            <span className="text-accent">query, crawl, and operate.</span>
+          <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
+            The enterprise hub{" "}
+            <span className="text-accent">where agents work.</span>
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-muted">
-            AGenNext unifies your sources into one Schema.org knowledge graph — available as a
-            protocol response and as Linked-Data HTML, instrumented with OpenTelemetry and secured
-            with SPIFFE identity.
+            Build, run, and govern agents over a Schema.org data fabric — templates, skills, tools,
+            and knowledge as composable Linked Data. Protocol-first and self-hostable, observable
+            with OpenTelemetry, and secured with SPIFFE identity.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/admin" className="btn btn-primary">
-              Open the admin panel
+            <Link href="/agents" className="btn btn-primary">
+              Run an agent
             </Link>
-            <Link href="/stack" className="btn btn-ghost">
-              Browse the registry
+            <Link href="/catalog" className="btn btn-ghost">
+              Browse building blocks
             </Link>
-            <a href="/api/graph" className="btn btn-ghost font-mono">
-              GET /api/graph
+            <a href="/api/agents" className="btn btn-ghost font-mono">
+              GET /api/agents
             </a>
           </div>
           <div className="mt-10 grid max-w-xl grid-cols-3 gap-3">
@@ -69,6 +79,21 @@ export default async function Home() {
             <Stat label="types" value={typeCount.size} />
             <Stat label="edges" value={graphEdges.length} />
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 pt-12">
+        <SectionLabel>The hub</SectionLabel>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {pillars.map((p) => (
+            <Link key={p.href} href={p.href} className="card group p-5 transition hover:border-accent">
+              <div className="flex items-baseline justify-between">
+                <span className="font-medium group-hover:text-accent">{p.label}</span>
+                <span className="text-2xl font-semibold tabular-nums text-accent">{p.count}</span>
+              </div>
+              <p className="mt-1 text-xs text-muted">{p.desc}</p>
+            </Link>
+          ))}
         </div>
       </section>
 

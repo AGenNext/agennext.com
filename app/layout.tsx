@@ -8,9 +8,9 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "AGenNext — protocol-first Schema.org data fabric",
+  title: "AGenNext — the enterprise hub where agents work",
   description:
-    "An open, cloud-native, protocol-first platform that unifies sources into a Schema.org knowledge graph — queryable by protocol, browsable as Linked-Data HTML.",
+    "The open, cloud-native enterprise hub where agents work: templates, skills, tools, and knowledge over a Schema.org data fabric — protocol-first, self-hostable, observable, and secured with SPIFFE identity.",
   metadataBase: new URL("https://agennext.com"),
 };
 

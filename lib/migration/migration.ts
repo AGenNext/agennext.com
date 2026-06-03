@@ -7,6 +7,7 @@
  * rule-based; inventories are sample data here and would come from the
  * Kubernetes MCP server in a live deployment.
  */
+import { estimateMigrationCost, type CostEstimate } from "@/lib/migration/cost";
 
 export type Distro = "k3s" | "microk8s" | "talos" | "eks" | "gke" | "aks" | "ovh";
 
@@ -141,6 +142,7 @@ export interface MigrationPlan {
   steps: MigrationStep[];
   risks: string[];
   rollbackPlan: string[];
+  cost?: CostEstimate;
 }
 
 const STORAGE_CLASS: Record<Distro, string> = {
@@ -239,5 +241,6 @@ export function planMigration(source: ClusterInventory, target: Distro, provider
     steps,
     risks,
     rollbackPlan,
+    cost: provider ? estimateMigrationCost(source, provider) : undefined,
   };
 }

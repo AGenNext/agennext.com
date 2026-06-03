@@ -1,5 +1,6 @@
 import { iri } from "@/lib/protocol";
 import type { GraphNode } from "@/lib/protocol";
+import { REPOS } from "@/lib/fabric/repos";
 
 /**
  * Seed graph: AGenNext describing itself in its own data model.
@@ -550,4 +551,5 @@ export const SEED: GraphNode[] = [
   },
   ...BLOCKS,
   ...STACK,
+  ...REPOS,
 ];

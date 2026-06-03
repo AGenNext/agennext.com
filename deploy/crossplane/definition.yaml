@@ -1,16 +1,15 @@
 # CompositeResourceDefinition (XRD): the declarative platform API.
-# Installing this teaches the Crossplane control plane a new kind,
-# `AgennextPlatform`, that operators create to provision the whole platform.
-apiVersion: apiextensions.crossplane.io/v1
+# Crossplane v2 (v2.3): Composite Resources are namespaced and Claims are gone —
+# operators create the `AgennextPlatform` XR directly in a namespace. The new
+# `scope: Namespaced` field replaces the old claim/X-prefix split.
+apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xagennextplatforms.platform.agennext.com
+  name: agennextplatforms.platform.agennext.com
 spec:
+  scope: Namespaced
   group: platform.agennext.com
   names:
-    kind: XAgennextPlatform
-    plural: xagennextplatforms
-  claimNames:
     kind: AgennextPlatform
     plural: agennextplatforms
   defaultCompositionRef:

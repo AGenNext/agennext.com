@@ -114,8 +114,8 @@ const STACK: GraphNode[] = [
     "@type": "SoftwareApplication",
     name: "Crossplane",
     applicationCategory: "ControlPlane",
-    description: "Composable control plane: the platform is exposed as a declarative AgennextPlatform API.",
-    url: "https://www.crossplane.io/",
+    description: "Composable control plane (v2): the platform is a namespaced AgennextPlatform composite resource.",
+    url: "https://docs.crossplane.io/v2.3/",
     sameAs: "https://github.com/crossplane/crossplane",
   },
   {

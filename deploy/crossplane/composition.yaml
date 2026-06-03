@@ -1,6 +1,7 @@
 # Composition: how an AgennextPlatform is realized.
-# Pipeline mode with function-patch-and-transform composes provider-kubernetes
-# Objects (a Deployment + a Service) and patches them from the XR parameters.
+# Crossplane v2 keeps Compositions on apiextensions.crossplane.io/v1 and
+# Pipeline mode is the only mode — function-patch-and-transform composes
+# provider-kubernetes Objects (a Deployment + a Service) from the XR parameters.
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
@@ -10,7 +11,7 @@ metadata:
 spec:
   compositeTypeRef:
     apiVersion: platform.agennext.com/v1alpha1
-    kind: XAgennextPlatform
+    kind: AgennextPlatform
   mode: Pipeline
   pipeline:
     - step: patch-and-transform

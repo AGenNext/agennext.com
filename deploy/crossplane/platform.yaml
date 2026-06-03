@@ -1,6 +1,7 @@
-# Example claim: an operator declares the platform they want, and the
-# Crossplane control plane composes and reconciles it. This is the entire
-# public API surface for running AGenNext on a cluster.
+# The AgennextPlatform composite resource (Crossplane v2, namespaced).
+# An operator applies this directly — there is no separate Claim in v2 — and the
+# control plane composes and reconciles it. This is the entire public API
+# surface for running AGenNext on a cluster.
 apiVersion: platform.agennext.com/v1alpha1
 kind: AgennextPlatform
 metadata:

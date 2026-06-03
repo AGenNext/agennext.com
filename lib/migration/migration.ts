@@ -8,7 +8,7 @@
  * Kubernetes MCP server in a live deployment.
  */
 
-export type Distro = "k3s" | "microk8s" | "eks" | "gke" | "aks";
+export type Distro = "k3s" | "microk8s" | "talos" | "eks" | "gke" | "aks";
 
 export const MANAGED: Distro[] = ["eks", "gke", "aks"];
 
@@ -71,6 +71,22 @@ export const CLUSTERS: Record<string, ClusterInventory> = {
     ingressController: "nginx",
     loadBalancer: "metallb",
   },
+  "talos-baremetal": {
+    id: "talos-baremetal",
+    name: "talos-baremetal",
+    distro: "talos",
+    k8sVersion: "1.30.3",
+    nodes: 5,
+    namespaces: ["default", "ingress-nginx", "monitoring"],
+    workloads: [
+      { name: "api", namespace: "default", kind: "Deployment", replicas: 3 },
+      { name: "minio", namespace: "default", kind: "StatefulSet", replicas: 4, hasPersistentVolume: true },
+    ],
+    helm: [{ name: "ingress-nginx", chart: "ingress-nginx" }, { name: "metallb", chart: "metallb" }],
+    storageClass: "local-path",
+    ingressController: "nginx",
+    loadBalancer: "metallb",
+  },
 };
 
 export type Phase = "discovery" | "plan" | "migrate" | "validate" | "rollback";
@@ -96,6 +112,7 @@ export interface MigrationPlan {
 const STORAGE_CLASS: Record<Distro, string> = {
   k3s: "local-path",
   microk8s: "microk8s-hostpath",
+  talos: "local-path",
   eks: "gp3",
   gke: "standard-rwo",
   aks: "managed-csi",
@@ -104,6 +121,7 @@ const STORAGE_CLASS: Record<Distro, string> = {
 const INGRESS: Record<Distro, string> = {
   k3s: "traefik",
   microk8s: "nginx",
+  talos: "nginx",
   eks: "aws-load-balancer-controller",
   gke: "gce",
   aks: "application-gateway",
@@ -136,6 +154,18 @@ export function planMigration(source: ClusterInventory, target: Distro): Migrati
 
   if (source.loadBalancer !== "cloud" && MANAGED.includes(target)) {
     add("plan", "Provision cloud load balancers", `Replace ${source.loadBalancer} with the cloud provider load balancer for Service type=LoadBalancer.`, "medium");
+  }
+
+  if (target === "talos" || source.distro === "talos") {
+    add(
+      "plan",
+      "Apply Talos MachineConfig",
+      "Talos is immutable and API-driven — no SSH or node shell. Provision/manage nodes via talosctl and declarative MachineConfig instead of in-place changes.",
+      "medium",
+    );
+    if (source.distro !== "talos" && target === "talos") {
+      risks.push("Target is Talos: no SSH/node access — all node config must go through talosctl/MachineConfig.");
+    }
   }
 
   if (source.helm.length) {

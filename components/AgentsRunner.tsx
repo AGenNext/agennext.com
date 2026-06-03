@@ -165,7 +165,7 @@ interface MigrationPlan {
   rollbackPlan: string[];
 }
 
-const TARGETS = ["k3s", "microk8s", "eks", "gke", "aks"];
+const TARGETS = ["k3s", "microk8s", "talos", "eks", "gke", "aks"];
 const riskTone = (r?: string) => (r === "high" ? "text-danger" : r === "medium" ? "text-warn" : "text-muted");
 
 function MigrationPanel({ sources }: { sources: SourceCluster[] }) {

@@ -19,6 +19,18 @@ describe("migration planner", () => {
     expect(plan.risks.join(" ")).toMatch(/persistent volumes/i);
   });
 
+  it("adds Talos MachineConfig handling and a no-SSH risk when targeting Talos", () => {
+    const plan = planMigration(CLUSTERS["k3s-edge"], "talos");
+    expect(plan.steps.some((s) => s.title === "Apply Talos MachineConfig")).toBe(true);
+    expect(plan.risks.join(" ")).toMatch(/no SSH/i);
+  });
+
+  it("plans a Talos source migration", () => {
+    const plan = planMigration(CLUSTERS["talos-baremetal"], "eks");
+    expect(plan.source.distro).toBe("talos");
+    expect(plan.steps.some((s) => s.phase === "validate")).toBe(true);
+  });
+
   it("produces fewer steps for a like-for-like move", () => {
     const plan = planMigration(CLUSTERS["microk8s-dev"], "microk8s");
     // No storage/ingress swap needed when distro is unchanged.

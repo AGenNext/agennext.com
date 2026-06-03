@@ -26,7 +26,7 @@ server.tool("list_clusters", "List known Kubernetes clusters and their inventory
 server.tool(
   "migration_plan",
   "Plan a Kubernetes migration from a source cluster to a target distro",
-  { source: z.string(), target: z.enum(["k3s", "microk8s", "eks", "gke", "aks"]) },
+  { source: z.string(), target: z.enum(["k3s", "microk8s", "talos", "eks", "gke", "aks"]) },
   async ({ source, target }) => {
     const cluster = CLUSTERS[source];
     if (!cluster) {

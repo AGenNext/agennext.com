@@ -73,6 +73,15 @@ const STACK: GraphNode[] = [
     sameAs: "https://github.com/fluxcd/flux2",
   },
   {
+    "@id": iri("tech-talos"),
+    "@type": "SoftwareApplication",
+    name: "Talos Linux",
+    applicationCategory: "Kubernetes",
+    description: "Immutable, API-driven Kubernetes OS (no SSH) — a supported migration target.",
+    url: "https://www.talos.dev/",
+    sameAs: "https://github.com/siderolabs/talos",
+  },
+  {
     "@id": iri("tech-k3s"),
     "@type": "SoftwareApplication",
     name: "k3s",
@@ -446,6 +455,7 @@ export const SEED: GraphNode[] = [
       ref("tech-spiffe"),
       ref("tech-openfeature"),
       ref("tech-opencost"),
+      ref("tech-talos"),
       ref("tech-kubeedge"),
       ref("tech-layotto"),
       ref("tech-hertzbeat"),

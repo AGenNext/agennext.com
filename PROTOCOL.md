@@ -47,6 +47,19 @@ separate platform schema.
 `Query` fields (`type`, `text`, `ids`, `limit`, `offset`) are all optional and
 AND-combined. `NodeResult` is `{ node, outgoing[], incoming[] }`.
 
+## Codegen (protobuf core)
+
+`proto/agennext/v1/fabric.proto` is the typed source of truth. Generate the TS
+bindings with:
+
+```bash
+npm run proto:gen   # buf generate -> lib/protocol/gen/
+```
+
+`lib/protocol/proto.ts` bridges the generated protobuf `Node`/`Query` and the
+JSON-LD `GraphNode`/`Query`, so a gRPC transport can speak protobuf while the
+app works in JSON-LD. The bridge is covered by a binary round-trip test.
+
 ## Authentication & authorization
 
 - **AuthN (SPIFFE)** — the caller's identity is a SPIFFE ID asserted by the

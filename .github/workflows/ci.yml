@@ -19,6 +19,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Fail if the generated protobuf bindings drift from the .proto source.
+      - run: npm run proto:gen
+      - run: git diff --exit-code lib/protocol/gen
       - run: npm run typecheck
       - run: npm test
       - run: npm run build

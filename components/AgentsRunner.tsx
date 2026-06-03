@@ -193,10 +193,18 @@ interface MigrationRun {
   at: string;
 }
 
+interface ExecutionLog {
+  mode: string;
+  total: number;
+  summary: string;
+  results: { action: { op: string; target: string }; status: string; message?: string }[];
+}
+
 function MigrationPanel({ sources, providers }: { sources: SourceCluster[]; providers: TargetProvider[] }) {
   const [source, setSource] = useState(sources[0]?.id ?? "");
   const [provider, setProvider] = useState(providers[0]?.id ?? "aws");
   const [plan, setPlan] = useState<MigrationPlan | null>(null);
+  const [execution, setExecution] = useState<ExecutionLog | null>(null);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<MigrationRun[]>([]);
 
@@ -207,6 +215,7 @@ function MigrationPanel({ sources, providers }: { sources: SourceCluster[]; prov
   async function run() {
     setBusy(true);
     setPlan(null);
+    setExecution(null);
     const res = await fetch("/api/agents/migration", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -214,6 +223,21 @@ function MigrationPanel({ sources, providers }: { sources: SourceCluster[]; prov
     });
     const data = await res.json();
     setPlan(data.data ?? null);
+    setBusy(false);
+    loadHistory();
+  }
+
+  async function execute() {
+    setBusy(true);
+    setExecution(null);
+    const res = await fetch("/api/agents/migration/execute", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ source, provider }),
+    });
+    const data = await res.json();
+    setPlan(data.data?.plan ?? null);
+    setExecution(data.data?.execution ?? null);
     setBusy(false);
     loadHistory();
   }
@@ -247,9 +271,14 @@ function MigrationPanel({ sources, providers }: { sources: SourceCluster[]; prov
             </select>
           </label>
         </div>
-        <button onClick={run} disabled={busy || !source} className="btn btn-primary disabled:opacity-50">
-          {busy ? "Planning…" : "Plan migration"}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={run} disabled={busy || !source} className="btn btn-primary disabled:opacity-50">
+            {busy ? "Working…" : "Plan migration"}
+          </button>
+          <button onClick={execute} disabled={busy || !source} className="btn btn-ghost disabled:opacity-50">
+            Execute (dry-run)
+          </button>
+        </div>
 
         {plan && (
           <div className="space-y-3">
@@ -278,6 +307,27 @@ function MigrationPanel({ sources, providers }: { sources: SourceCluster[]; prov
                 </ul>
               </div>
             )}
+          </div>
+        )}
+
+        {execution && (
+          <div className="border-t border-border pt-3">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-[10px] uppercase tracking-wide text-muted">Execution</span>
+              <span className="pill px-1.5 py-0.5 text-[10px] text-accent">{execution.mode}</span>
+              <span className="text-muted">{execution.summary}</span>
+            </div>
+            <ul className="mt-1.5 space-y-1">
+              {execution.results.map((r, i) => (
+                <li key={i} className="flex items-center justify-between text-xs">
+                  <span>
+                    <span className="font-mono text-[10px] text-accent">{r.action.op}</span>{" "}
+                    {r.action.target}
+                  </span>
+                  <span className="text-muted">{r.status}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

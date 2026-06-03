@@ -12,6 +12,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { CLUSTERS, PROVIDERS, planMigration, resolveTargetDistro } from "@/lib/migration/migration";
+import { executePlan } from "@/lib/migration/executor";
 import { SEED } from "@/lib/fabric/seed";
 import { edgesFrom } from "@/lib/fabric";
 import { migrationHistory, recordMigration } from "@/lib/agents/memory";
@@ -65,6 +66,22 @@ server.tool(
 server.tool("migration_history", "List recent migration runs from shared memory", {}, async () => ({
   content: [{ type: "text", text: JSON.stringify(await migrationHistory(), null, 2) }],
 }));
+
+server.tool(
+  "migration_execute",
+  "Plan a migration to a provider and execute it (dry-run: simulates the cluster operations)",
+  { source: z.string(), provider: PROVIDER_ENUM },
+  async ({ source, provider }) => {
+    const cluster = CLUSTERS[source];
+    if (!cluster) {
+      return { content: [{ type: "text", text: `Unknown source cluster: ${source}` }], isError: true };
+    }
+    const plan = planMigration(cluster, resolveTargetDistro(provider), provider);
+    const execution = await executePlan(plan);
+    const memoryId = await recordMigration(plan);
+    return { content: [{ type: "text", text: JSON.stringify({ memoryId, execution }, null, 2) }] };
+  },
+);
 
 server.tool(
   "graph_query",

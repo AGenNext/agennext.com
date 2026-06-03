@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/stack", label: "Registry" },
   { href: "/schema", label: "Schema" },
   { href: "/agents", label: "Agents" },
+  { href: "/catalog", label: "Catalog" },
   { href: "/control", label: "Control" },
   { href: "/admin", label: "Admin" },
   { href: "/console", label: "Console" },

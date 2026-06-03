@@ -316,6 +316,58 @@ const STACK: GraphNode[] = [
   },
 ];
 
+/**
+ * Agent building blocks: the composable pieces agents are assembled from —
+ * Templates (blueprints), Skills (capabilities), Tools (callable endpoints),
+ * and Knowledge (sources). Modeled as schema.org nodes tagged with an
+ * applicationCategory, and wired together with hasPart edges.
+ */
+const BLOCKS: GraphNode[] = [
+  // Templates
+  {
+    "@id": iri("template-research-assistant"),
+    "@type": "SoftwareApplication",
+    applicationCategory: "AgentTemplate",
+    name: "Research Assistant Template",
+    description: "Blueprint for an agent that explores the graph and writes briefs.",
+    author: ref("agennext"),
+    hasPart: [ref("skill-graph-traversal"), ref("skill-summarization"), ref("tool-fabric-query"), ref("knowledge-graph")],
+  },
+  {
+    "@id": iri("template-ops-copilot"),
+    "@type": "SoftwareApplication",
+    applicationCategory: "AgentTemplate",
+    name: "Ops Copilot Template",
+    description: "Blueprint for an agent that audits health and control-plane state.",
+    author: ref("agennext"),
+    hasPart: [ref("skill-health-audit"), ref("tool-metrics"), ref("tool-control")],
+  },
+  {
+    "@id": iri("template-rag-agent"),
+    "@type": "SoftwareApplication",
+    applicationCategory: "AgentTemplate",
+    name: "RAG Agent Template",
+    description: "Blueprint for retrieval-augmented agents over the Schema.org knowledge.",
+    author: ref("agennext"),
+    hasPart: [ref("skill-entity-extraction"), ref("tool-ai-extract"), ref("knowledge-schemaorg")],
+  },
+  // Skills
+  { "@id": iri("skill-graph-traversal"), "@type": "SoftwareApplication", applicationCategory: "Skill", name: "Graph Traversal", description: "Walk neighborhoods and rank related entities." },
+  { "@id": iri("skill-summarization"), "@type": "SoftwareApplication", applicationCategory: "Skill", name: "Summarization", description: "Condense a subgraph into a brief." },
+  { "@id": iri("skill-entity-extraction"), "@type": "SoftwareApplication", applicationCategory: "Skill", name: "Entity Extraction", description: "Turn text into typed schema.org nodes." },
+  { "@id": iri("skill-shortest-path"), "@type": "SoftwareApplication", applicationCategory: "Skill", name: "Shortest-Path Routing", description: "Find the route between two entities." },
+  { "@id": iri("skill-health-audit"), "@type": "SoftwareApplication", applicationCategory: "Skill", name: "Health Audit", description: "Assess connectors, flags, and reconciliation state." },
+  // Tools (real platform endpoints)
+  { "@id": iri("tool-fabric-query"), "@type": "SoftwareApplication", applicationCategory: "Tool", name: "Fabric Query", description: "Query the graph via /api/graph.", url: "https://agennext.com/api/graph" },
+  { "@id": iri("tool-path-finder"), "@type": "SoftwareApplication", applicationCategory: "Tool", name: "Path Finder", description: "Shortest route via /api/path.", url: "https://agennext.com/api/path" },
+  { "@id": iri("tool-metrics"), "@type": "SoftwareApplication", applicationCategory: "Tool", name: "Metrics", description: "OpenMetrics via /api/metrics.", url: "https://agennext.com/api/metrics" },
+  { "@id": iri("tool-ai-extract"), "@type": "SoftwareApplication", applicationCategory: "Tool", name: "AI Extract", description: "Text → nodes via /api/extract.", url: "https://agennext.com/api/extract" },
+  { "@id": iri("tool-control"), "@type": "SoftwareApplication", applicationCategory: "Tool", name: "Control", description: "Desired/observed state via /api/control.", url: "https://agennext.com/api/control" },
+  // Knowledge
+  { "@id": iri("knowledge-schemaorg"), "@type": "Dataset", applicationCategory: "Knowledge", name: "Schema.org Meta-Model", description: "The full schema.org vocabulary backing the type system.", isBasedOn: "https://schema.org/docs/full.html" },
+  { "@id": iri("knowledge-graph"), "@type": "Dataset", applicationCategory: "Knowledge", name: "AGenNext Knowledge Graph", description: "The unified Schema.org instance graph.", creator: ref("agennext") },
+];
+
 export const SEED: GraphNode[] = [
   {
     "@id": iri("agennext"),
@@ -471,6 +523,7 @@ export const SEED: GraphNode[] = [
     author: ref("agennext"),
     isPartOf: ref("platform"),
     about: ref("graph"),
+    isBasedOn: ref("template-research-assistant"),
   },
   {
     "@id": iri("agent-operations"),
@@ -482,6 +535,7 @@ export const SEED: GraphNode[] = [
     author: ref("agennext"),
     isPartOf: ref("platform"),
     about: ref("observability"),
+    isBasedOn: ref("template-ops-copilot"),
   },
   {
     "@id": iri("agent-k8s"),
@@ -494,5 +548,6 @@ export const SEED: GraphNode[] = [
     isPartOf: ref("platform"),
     about: ref("term-cloud-native"),
   },
+  ...BLOCKS,
   ...STACK,
 ];

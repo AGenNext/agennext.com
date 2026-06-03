@@ -47,11 +47,26 @@ separate platform schema.
 `Query` fields (`type`, `text`, `ids`, `limit`, `offset`) are all optional and
 AND-combined. `NodeResult` is `{ node, outgoing[], incoming[] }`.
 
+## Authentication & authorization
+
+- **AuthN (SPIFFE)** — the caller's identity is a SPIFFE ID asserted by the
+  mesh: either an `X-Spiffe-Id` header (set after mTLS) or a JWT-SVID
+  `Authorization: Bearer` token. The trust domain is enforced; foreign
+  identities are rejected. `DEV_SPIFFE_ID` provides a local escape hatch.
+- **AuthZ (Permify/ReBAC)** — permissions map to relations on the `graph`
+  object: `graph:read` ← reader|writer|admin, `graph:write` ← writer|admin.
+  Writers are configured via `AUTHZ_WRITERS` (plus the default API writer
+  identity).
+- **Enforcement** — writes always require `graph:write` (else `401`/`403`).
+  Reads are public unless the `public-reads` flag is off, then require
+  `graph:read`.
+
 ## Guarantees
 
 - **Schemaless** — connectors store documents, not columns; SurrealDB and the
   in-memory store are interchangeable.
-- **Identity** — writes execute under a SPIFFE workload identity.
+- **Identity** — every write is authenticated (SPIFFE) and authorized (ReBAC),
+  and audit-logged with the principal.
 - **Flags** — the write path and optional connectors are gated by OpenFeature
   flags.
 - **Observable** — every operation is a span; counters/gauges render at

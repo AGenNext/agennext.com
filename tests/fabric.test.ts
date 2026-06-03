@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { DataFabric } from "@/lib/fabric";
 import { MemoryConnector } from "@/lib/fabric/connectors/memory";
 import { iri, type GraphNode } from "@/lib/protocol";
+import { parseSpiffeId } from "@/lib/security/spiffe";
+
+const WRITER = { id: parseSpiffeId("spiffe://agennext.com/api/fabric/writer"), via: "header" as const };
+const READER = { id: parseSpiffeId("spiffe://agennext.com/svc/reader"), via: "header" as const };
 
 const seed: GraphNode[] = [
   { "@id": iri("org"), "@type": "Organization", name: "Acme", founder: { "@id": iri("p") } },
@@ -38,15 +42,22 @@ describe("DataFabric", () => {
     });
 
     it("blocks upsert when the write flag is off", async () => {
-      await expect(fabric().upsert(seed[0])).rejects.toThrow(/disabled/);
+      await expect(fabric().upsert(seed[0], WRITER)).rejects.toThrow(/disabled/);
     });
 
-    it("allows upsert when the write flag is on", async () => {
+    it("allows an authorized writer to upsert when the write flag is on", async () => {
       process.env.FLAG_WRITE_API = "true";
       const f = fabric();
       const node: GraphNode = { "@id": iri("new"), "@type": "Thing", name: "New" };
-      await expect(f.upsert(node)).resolves.toMatchObject({ "@id": iri("new") });
+      await expect(f.upsert(node, WRITER)).resolves.toMatchObject({ "@id": iri("new") });
       expect((await f.query({ ids: [iri("new")] })).total).toBe(1);
+    });
+
+    it("rejects anonymous writes (401) and under-privileged writes (403)", async () => {
+      process.env.FLAG_WRITE_API = "true";
+      const node: GraphNode = { "@id": iri("nope"), "@type": "Thing", name: "Nope" };
+      await expect(fabric().upsert(node, null)).rejects.toMatchObject({ status: 401 });
+      await expect(fabric().upsert(node, READER)).rejects.toMatchObject({ status: 403 });
     });
   });
 });

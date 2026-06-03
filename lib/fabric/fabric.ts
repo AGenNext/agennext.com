@@ -4,7 +4,8 @@ import { SurrealConnector, surrealConfigFromEnv } from "@/lib/fabric/connectors/
 import { EDGE_PROPERTIES } from "@/lib/schema/org";
 import { flags, FLAGS } from "@/lib/flags";
 import { log, metrics, span } from "@/lib/observability";
-import { svidFor } from "@/lib/security/spiffe";
+import type { Principal } from "@/lib/security/auth";
+import { authorize, AuthzError } from "@/lib/security/authz";
 import {
   isReference,
   type Edge,
@@ -74,19 +75,24 @@ export class DataFabric {
     });
   }
 
-  async upsert(node: GraphNode): Promise<GraphNode> {
+  async upsert(node: GraphNode, principal: Principal | null): Promise<GraphNode> {
     if (!flags.boolean(FLAGS.WRITE_API, false)) {
-      throw new Error("Write API disabled (enable flag write-api).");
+      throw new AuthzError("Write API disabled (enable flag write-api).", 403);
     }
-    // SPIFFE: writes are performed under the platform's API workload identity.
-    const svid = svidFor("/api/fabric/writer");
+    // SPIFFE identity + Permify-style authorization gate every write.
+    authorize(principal, "graph:write");
     const target = this.connectors.find((c) => c.writable && c.upsert);
     if (!target?.upsert) throw new Error("No writable connector available.");
     return span(
       "fabric.upsert",
       async () => {
         const saved = await target.upsert!(node);
-        log.info("fabric.upsert", { id: saved["@id"], by: svid.id.toString(), connector: target.id });
+        log.info("fabric.upsert", {
+          id: saved["@id"],
+          by: principal!.id.toString(),
+          via: principal!.via,
+          connector: target.id,
+        });
         metrics.counter("agennext_fabric_upsert_total", "Nodes written via fabric", {
           connector: target.id,
         });

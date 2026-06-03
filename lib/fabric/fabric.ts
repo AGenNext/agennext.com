@@ -120,6 +120,14 @@ export class DataFabric {
     );
   }
 
+  /** All nodes plus their derived edges — the input to graph algorithms/agents. */
+  async snapshot(): Promise<{ nodes: GraphNode[]; edges: Edge[] }> {
+    const nodes = (await this.query({})).items;
+    const ids = new Set(nodes.map((n) => n["@id"]));
+    const edges = nodes.flatMap((n) => edgesFrom(n)).filter((e) => ids.has(e.to));
+    return { nodes, edges };
+  }
+
   async health(): Promise<{ status: Health["status"]; connectors: Array<{ id: string } & Health> }> {
     const reports = await Promise.all(
       this.connectors.map(async (c) => ({ id: c.id, ...(await c.health()) })),

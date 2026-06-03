@@ -450,5 +450,49 @@ export const SEED: GraphNode[] = [
       "Structured data published as JSON-LD using shared vocabularies so machines can follow relationships across documents.",
     url: "https://www.w3.org/standards/semanticweb/data",
   },
+  {
+    "@id": iri("agent-core"),
+    "@type": ["SoftwareApplication"],
+    name: "AgentCore",
+    applicationCategory: "Agent",
+    description:
+      "The agent runtime: registers, describes, and dispatches the platform's agents over the data fabric.",
+    author: ref("agennext"),
+    isPartOf: ref("platform"),
+    about: ref("graph"),
+  },
+  {
+    "@id": iri("agent-research"),
+    "@type": ["SoftwareApplication"],
+    name: "Research Agent",
+    applicationCategory: "Agent",
+    description:
+      "An agent that works over the data fabric: explores the graph around a subject, finds routes to key hubs, and writes a cited research brief.",
+    author: ref("agennext"),
+    isPartOf: ref("platform"),
+    about: ref("graph"),
+  },
+  {
+    "@id": iri("agent-operations"),
+    "@type": ["SoftwareApplication"],
+    name: "Operations Agent",
+    applicationCategory: "Agent",
+    description:
+      "Audits connector health, control-plane state, and feature flags, then reports findings and recommendations.",
+    author: ref("agennext"),
+    isPartOf: ref("platform"),
+    about: ref("observability"),
+  },
+  {
+    "@id": iri("agent-k8s"),
+    "@type": ["SoftwareApplication"],
+    name: "Kubernetes Agent",
+    applicationCategory: "Agent",
+    description:
+      "Describes the intended Kubernetes topology from the control-plane spec and flags deployment risks.",
+    author: ref("agennext"),
+    isPartOf: ref("platform"),
+    about: ref("term-cloud-native"),
+  },
   ...STACK,
 ];

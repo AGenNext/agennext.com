@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Explore" },
   { href: "/stack", label: "Registry" },
   { href: "/schema", label: "Schema" },
+  { href: "/agents", label: "Agents" },
   { href: "/control", label: "Control" },
   { href: "/admin", label: "Admin" },
   { href: "/console", label: "Console" },

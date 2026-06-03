@@ -43,6 +43,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <Link href="/stack" className="text-sm text-muted hover:text-foreground">
               Stack
             </Link>
+            <Link href="/control" className="text-sm text-muted hover:text-foreground">
+              Control
+            </Link>
             <Link href="/console" className="text-sm text-muted hover:text-foreground">
               Console
             </Link>

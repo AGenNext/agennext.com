@@ -1,0 +1,59 @@
+# CompositeResourceDefinition (XRD): the declarative platform API.
+# Installing this teaches the Crossplane control plane a new kind,
+# `AgennextPlatform`, that operators create to provision the whole platform.
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xagennextplatforms.platform.agennext.com
+spec:
+  group: platform.agennext.com
+  names:
+    kind: XAgennextPlatform
+    plural: xagennextplatforms
+  claimNames:
+    kind: AgennextPlatform
+    plural: agennextplatforms
+  defaultCompositionRef:
+    name: agennext-platform
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    image:
+                      type: string
+                      default: ghcr.io/agennext/agennext.com:latest
+                    replicas:
+                      type: integer
+                      default: 2
+                      minimum: 1
+                    connector:
+                      type: string
+                      enum: ["memory", "surreal"]
+                      default: memory
+                    surrealUrl:
+                      type: string
+                    writeApi:
+                      type: boolean
+                      default: false
+                    trustDomain:
+                      type: string
+                      default: agennext.com
+                  required: [image]
+              required: [parameters]
+            status:
+              type: object
+              properties:
+                condition:
+                  type: string
+                nodes:
+                  type: integer

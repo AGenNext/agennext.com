@@ -1,0 +1,61 @@
+// AGenNext data-fabric protocol — the strongly-typed core contract.
+//
+// Protocol-first means this .proto is canonical: the JSON-LD wire form
+// (lib/protocol) and any gRPC transport are two encodings of these messages.
+// Schemaless schema.org nodes are carried as google.protobuf.Struct so any
+// schema.org property round-trips without a fixed column set.
+syntax = "proto3";
+
+package agennext.v1;
+
+import "google/protobuf/struct.proto";
+
+// A JSON-LD reference: { "@id": "..." }.
+message Reference {
+  string id = 1; // maps to "@id"
+}
+
+// A schema.org Thing. `id` is the IRI, `types` are schema.org type names,
+// and `properties` holds every other schema.org property (literals + refs).
+message Node {
+  string id = 1;                          // "@id"
+  repeated string types = 2;              // "@type"
+  google.protobuf.Struct properties = 3;  // remaining schema.org properties
+}
+
+// A directed edge derived from a reference-valued property.
+message Edge {
+  string from = 1;
+  string property = 2; // schema.org property name
+  string to = 3;
+}
+
+// A query against the fabric; all fields optional and AND-combined.
+message Query {
+  string type = 1;
+  string text = 2;
+  repeated string ids = 3;
+  uint32 limit = 4;
+  uint32 offset = 5;
+}
+
+message QueryResult {
+  repeated Node items = 1;
+  uint32 total = 2;
+}
+
+message NodeResult {
+  Node node = 1;
+  repeated Edge outgoing = 2;
+  repeated Edge incoming = 3;
+}
+
+message GetNodeRequest { string id = 1; }
+message UpsertRequest { Node node = 1; }
+
+// The fabric service. Mirrors the HTTP/JSON-LD endpoints under /api/graph.
+service Fabric {
+  rpc QueryGraph(Query) returns (QueryResult);
+  rpc GetNode(GetNodeRequest) returns (NodeResult);
+  rpc Upsert(UpsertRequest) returns (Node); // identity-gated (SPIFFE)
+}

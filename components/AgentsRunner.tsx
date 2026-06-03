@@ -30,10 +30,25 @@ export interface SourceCluster {
   distro: string;
 }
 
-export function AgentsRunner({ nodes, sources = [] }: { nodes: NodeOption[]; sources?: SourceCluster[] }) {
+export interface TargetProvider {
+  id: string;
+  name: string;
+  distro: string;
+  managed: boolean;
+}
+
+export function AgentsRunner({
+  nodes,
+  sources = [],
+  providers = [],
+}: {
+  nodes: NodeOption[];
+  sources?: SourceCluster[];
+  providers?: TargetProvider[];
+}) {
   return (
     <div className="grid gap-8 lg:grid-cols-2">
-      <MigrationPanel sources={sources} />
+      <MigrationPanel sources={sources} providers={providers} />
       <ResearchPanel nodes={nodes} />
       <RoutePanel nodes={nodes} />
       <ReportPanel
@@ -166,21 +181,21 @@ interface MigrationPlan {
   rollbackPlan: string[];
 }
 
-const TARGETS = ["k3s", "microk8s", "talos", "eks", "gke", "aks"];
 const riskTone = (r?: string) => (r === "high" ? "text-danger" : r === "medium" ? "text-warn" : "text-muted");
 
 interface MigrationRun {
   id: string;
   source: string;
   target: string;
+  provider: string;
   steps: number;
   risks: number;
   at: string;
 }
 
-function MigrationPanel({ sources }: { sources: SourceCluster[] }) {
+function MigrationPanel({ sources, providers }: { sources: SourceCluster[]; providers: TargetProvider[] }) {
   const [source, setSource] = useState(sources[0]?.id ?? "");
-  const [target, setTarget] = useState("eks");
+  const [provider, setProvider] = useState(providers[0]?.id ?? "aws");
   const [plan, setPlan] = useState<MigrationPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<MigrationRun[]>([]);
@@ -195,7 +210,7 @@ function MigrationPanel({ sources }: { sources: SourceCluster[] }) {
     const res = await fetch("/api/agents/migration", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ source, target }),
+      body: JSON.stringify({ source, provider }),
     });
     const data = await res.json();
     setPlan(data.data ?? null);
@@ -222,11 +237,11 @@ function MigrationPanel({ sources }: { sources: SourceCluster[] }) {
             </select>
           </label>
           <label className="block text-xs text-muted">
-            target distro
-            <select className="input mt-1" value={target} onChange={(e) => setTarget(e.target.value)}>
-              {TARGETS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+            target provider
+            <select className="input mt-1" value={provider} onChange={(e) => setProvider(e.target.value)}>
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.distro}){p.managed ? " · managed" : ""}
                 </option>
               ))}
             </select>
@@ -273,7 +288,7 @@ function MigrationPanel({ sources }: { sources: SourceCluster[] }) {
               {history.slice(0, 5).map((h) => (
                 <li key={h.id} className="flex items-center justify-between text-xs">
                   <span className="font-mono">
-                    {h.source} → {h.target}
+                    {h.source} → {h.provider || h.target}
                   </span>
                   <span className="text-muted">
                     {h.steps} steps · {h.risks} risk{h.risks === 1 ? "" : "s"}

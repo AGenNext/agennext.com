@@ -89,6 +89,38 @@ export const CLUSTERS: Record<string, ClusterInventory> = {
   },
 };
 
+/**
+ * A target provider (the Unboxd "migrate by changing an endpoint" model):
+ * migrations target a provider, not just a distro. Managed providers pin the
+ * distro (aws→eks, gcp→gke, azure→aks); self-managed providers run k3s/Talos.
+ */
+export type Provider = "aws" | "gcp" | "azure" | "cloudstack" | "edge" | "onprem";
+
+export interface ProviderInfo {
+  id: Provider;
+  name: string;
+  managed: boolean;
+  distro: Distro;
+  loadBalancer: string;
+  objectStore: string;
+  identity: string;
+}
+
+export const PROVIDERS: Record<Provider, ProviderInfo> = {
+  aws: { id: "aws", name: "AWS", managed: true, distro: "eks", loadBalancer: "Network Load Balancer", objectStore: "s3.<region>.amazonaws.com", identity: "IAM / IRSA" },
+  gcp: { id: "gcp", name: "Google Cloud", managed: true, distro: "gke", loadBalancer: "Cloud Load Balancing", objectStore: "storage.googleapis.com", identity: "Workload Identity" },
+  azure: { id: "azure", name: "Azure", managed: true, distro: "aks", loadBalancer: "Azure Load Balancer", objectStore: "blob.core.windows.net", identity: "Entra Workload ID" },
+  cloudstack: { id: "cloudstack", name: "CloudStack", managed: false, distro: "k3s", loadBalancer: "CloudStack LB", objectStore: "S3-compatible (MinIO)", identity: "SPIFFE" },
+  edge: { id: "edge", name: "Edge", managed: false, distro: "talos", loadBalancer: "MetalLB", objectStore: "S3-compatible (MinIO)", identity: "SPIFFE" },
+  onprem: { id: "onprem", name: "On-prem", managed: false, distro: "talos", loadBalancer: "MetalLB", objectStore: "S3-compatible (Ceph/MinIO)", identity: "SPIFFE" },
+};
+
+/** Resolve the effective target distro for a provider (+ optional override). */
+export function resolveTargetDistro(provider: Provider, distro?: Distro): Distro {
+  const info = PROVIDERS[provider];
+  return info.managed ? info.distro : distro ?? info.distro;
+}
+
 export type Phase = "discovery" | "plan" | "migrate" | "validate" | "rollback";
 export type Risk = "low" | "medium" | "high";
 
@@ -103,6 +135,7 @@ export interface MigrationStep {
 export interface MigrationPlan {
   source: { id: string; distro: Distro; k8sVersion: string };
   target: Distro;
+  targetProvider?: Provider;
   summary: string;
   steps: MigrationStep[];
   risks: string[];
@@ -127,12 +160,13 @@ const INGRESS: Record<Distro, string> = {
   aks: "application-gateway",
 };
 
-export function planMigration(source: ClusterInventory, target: Distro): MigrationPlan {
+export function planMigration(source: ClusterInventory, target: Distro, provider?: Provider): MigrationPlan {
   const steps: MigrationStep[] = [];
   const risks: string[] = [];
   let order = 1;
   const add = (phase: Phase, title: string, detail: string, risk?: Risk) =>
     steps.push({ phase, order: order++, title, detail, risk });
+  const info = provider ? PROVIDERS[provider] : undefined;
 
   // Discovery
   add("discovery", "Inventory source cluster", `${source.workloads.length} workloads, ${source.helm.length} Helm releases across ${source.namespaces.length} namespaces.`);
@@ -168,6 +202,15 @@ export function planMigration(source: ClusterInventory, target: Distro): Migrati
     }
   }
 
+  if (info) {
+    if (info.managed) {
+      add("migrate", `Provision managed cluster on ${info.name}`, `Create a ${info.distro} cluster on ${info.name} and join nodes.`, "low");
+    }
+    // The Unboxd principle: migrate by changing the endpoint, not the code.
+    add("migrate", "Re-point service endpoints", `Update object-storage / service endpoints to ${info.objectStore} (S3-compatible). Application code stays unchanged — only the endpoint moves.`, "medium");
+    add("migrate", "Map workload identity", `Bind workloads to ${info.identity} on ${info.name}.`, "medium");
+  }
+
   if (source.helm.length) {
     add("migrate", "Re-deploy Helm releases", `Reinstall ${source.helm.map((h) => h.name).join(", ")} with target-specific values.`, "low");
   }
@@ -184,10 +227,12 @@ export function planMigration(source: ClusterInventory, target: Distro): Migrati
     "Re-point GitOps (Flux) to the source cluster manifests.",
   ];
 
+  const dest = info ? `${info.name} (${target})` : target;
   return {
     source: { id: source.id, distro: source.distro, k8sVersion: source.k8sVersion },
     target,
-    summary: `Migrate ${source.name} (${source.distro}) → ${target}: ${steps.length} steps, ${risks.length} risk(s).`,
+    targetProvider: provider,
+    summary: `Migrate ${source.name} (${source.distro}) → ${dest}: ${steps.length} steps, ${risks.length} risk(s).`,
     steps,
     risks,
     rollbackPlan,

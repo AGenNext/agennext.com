@@ -15,6 +15,7 @@ export interface MigrationRun {
   id: string;
   source: string;
   target: string;
+  provider: string;
   summary: string;
   steps: number;
   risks: number;
@@ -22,17 +23,19 @@ export interface MigrationRun {
 }
 
 export async function recordMigration(plan: MigrationPlan): Promise<string> {
-  const id = `migration-${plan.source.id}-${plan.target}-${Date.now()}`;
+  const dest = plan.targetProvider ?? plan.target;
+  const id = `migration-${plan.source.id}-${dest}-${Date.now()}`;
   const node: GraphNode = {
     "@id": iri(id),
     "@type": "Action",
-    name: `Migrate ${plan.source.id} → ${plan.target}`,
+    name: `Migrate ${plan.source.id} → ${dest}`,
     description: plan.summary,
     actionStatus: "CompletedActionStatus",
     agent: { "@id": iri("agent-migration") },
     startTime: new Date().toISOString(),
     sourceCluster: plan.source.id,
     targetDistro: plan.target,
+    targetProvider: plan.targetProvider ?? "",
     stepCount: plan.steps.length,
     riskCount: plan.risks.length,
   };
@@ -54,6 +57,7 @@ export async function migrationHistory(): Promise<MigrationRun[]> {
       id: n["@id"],
       source: getString(n, "sourceCluster") ?? "",
       target: getString(n, "targetDistro") ?? "",
+      provider: getString(n, "targetProvider") ?? "",
       summary: getString(n, "description") ?? "",
       steps: num(n, "stepCount"),
       risks: num(n, "riskCount"),

@@ -1,7 +1,7 @@
 import { getFabric } from "@/lib/fabric";
 import { getString, getTypes, labelOf, slugOf } from "@/lib/protocol";
 import { AgentsRunner, type NodeOption } from "@/components/AgentsRunner";
-import { migrationSources } from "@/lib/agents/migration";
+import { migrationSources, migrationProviders } from "@/lib/agents/migration";
 import { NodeCard, SectionLabel } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +51,7 @@ export default async function AgentsPage() {
       <div className="mt-10">
         <SectionLabel>Run</SectionLabel>
         <div className="mt-4">
-          <AgentsRunner nodes={nodeOptions} sources={migrationSources()} />
+          <AgentsRunner nodes={nodeOptions} sources={migrationSources()} providers={migrationProviders()} />
         </div>
       </div>
     </div>

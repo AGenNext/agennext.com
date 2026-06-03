@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { migrationTraced, MIGRATION_AGENT } from "@/lib/agents/migration";
 import { migrationHistory, recordMigration } from "@/lib/agents/memory";
-import type { Distro } from "@/lib/migration/migration";
+import type { Distro, Provider } from "@/lib/migration/migration";
 import { PROTOCOL_VERSION } from "@/lib/protocol";
 import { log, metrics } from "@/lib/observability";
 import { authenticate } from "@/lib/security/auth";
@@ -30,12 +30,16 @@ export async function POST(request: Request) {
     if (err instanceof AuthzError) return NextResponse.json({ error: err.message }, { status: err.status });
     throw err;
   }
-  const body = (await request.json().catch(() => ({}))) as { source?: string; target?: Distro };
-  if (!body.source || !body.target) {
-    return NextResponse.json({ error: "Provide 'source' and 'target'." }, { status: 400 });
+  const body = (await request.json().catch(() => ({}))) as {
+    source?: string;
+    provider?: Provider;
+    distro?: Distro;
+  };
+  if (!body.source || !body.provider) {
+    return NextResponse.json({ error: "Provide 'source' and 'provider'." }, { status: 400 });
   }
   try {
-    const plan = await migrationTraced(body.source, body.target);
+    const plan = await migrationTraced(body.source, body.provider, body.distro);
     metrics.counter("agennext_agent_runs_total", "Agent runs", { agent: MIGRATION_AGENT.id });
     // Persist to shared agent memory (best-effort; never fail the plan on it).
     let memoryId: string | undefined;

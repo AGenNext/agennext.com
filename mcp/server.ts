@@ -11,7 +11,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { CLUSTERS, planMigration } from "@/lib/migration/migration";
+import { CLUSTERS, PROVIDERS, planMigration, resolveTargetDistro } from "@/lib/migration/migration";
 import { SEED } from "@/lib/fabric/seed";
 import { edgesFrom } from "@/lib/fabric";
 import { migrationHistory, recordMigration } from "@/lib/agents/memory";
@@ -24,29 +24,39 @@ server.tool("list_clusters", "List known Kubernetes clusters and their inventory
   content: [{ type: "text", text: JSON.stringify(Object.values(CLUSTERS), null, 2) }],
 }));
 
+const PROVIDER_ENUM = z.enum(["aws", "gcp", "azure", "cloudstack", "edge", "onprem"]);
+
+server.tool(
+  "list_providers",
+  "List target providers and the distro each resolves to",
+  {},
+  async () => ({ content: [{ type: "text", text: JSON.stringify(Object.values(PROVIDERS), null, 2) }] }),
+);
+
 server.tool(
   "migration_plan",
-  "Plan a Kubernetes migration from a source cluster to a target distro",
-  { source: z.string(), target: z.enum(["k3s", "microk8s", "talos", "eks", "gke", "aks"]) },
-  async ({ source, target }) => {
+  "Plan a Kubernetes migration from a source cluster to a target provider",
+  { source: z.string(), provider: PROVIDER_ENUM },
+  async ({ source, provider }) => {
     const cluster = CLUSTERS[source];
     if (!cluster) {
       return { content: [{ type: "text", text: `Unknown source cluster: ${source}` }], isError: true };
     }
-    return { content: [{ type: "text", text: JSON.stringify(planMigration(cluster, target), null, 2) }] };
+    const plan = planMigration(cluster, resolveTargetDistro(provider), provider);
+    return { content: [{ type: "text", text: JSON.stringify(plan, null, 2) }] };
   },
 );
 
 server.tool(
   "migration_run",
-  "Plan a migration AND record it to shared agent memory (SurrealDB/file)",
-  { source: z.string(), target: z.enum(["k3s", "microk8s", "talos", "eks", "gke", "aks"]) },
-  async ({ source, target }) => {
+  "Plan a migration to a provider AND record it to shared agent memory",
+  { source: z.string(), provider: PROVIDER_ENUM },
+  async ({ source, provider }) => {
     const cluster = CLUSTERS[source];
     if (!cluster) {
       return { content: [{ type: "text", text: `Unknown source cluster: ${source}` }], isError: true };
     }
-    const plan = planMigration(cluster, target);
+    const plan = planMigration(cluster, resolveTargetDistro(provider), provider);
     const memoryId = await recordMigration(plan);
     return { content: [{ type: "text", text: JSON.stringify({ memoryId, plan }, null, 2) }] };
   },

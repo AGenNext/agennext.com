@@ -117,6 +117,15 @@ const STACK: GraphNode[] = [
     sameAs: "https://github.com/wasmCloud/wasmCloud",
   },
   {
+    "@id": iri("tech-numaflow"),
+    "@type": "SoftwareApplication",
+    name: "Numaflow",
+    applicationCategory: "StreamProcessing",
+    description: "Kubernetes-native stream processing for ingesting source events into the fabric.",
+    url: "https://numaflow.numaproj.io/",
+    sameAs: "https://github.com/numaproj/numaflow",
+  },
+  {
     "@id": iri("tech-kgateway"),
     "@type": "SoftwareApplication",
     name: "kgateway",
@@ -290,6 +299,7 @@ export const SEED: GraphNode[] = [
       ref("tech-triton"),
       ref("tech-cubesandbox"),
       ref("tech-kgateway"),
+      ref("tech-numaflow"),
     ],
   },
   {

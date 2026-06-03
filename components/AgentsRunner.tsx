@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { SectionLabel, Badge, StatusDot } from "@/components/ui";
+import { usePolling } from "@/components/usePolling";
 
 export interface NodeOption {
   slug: string;
@@ -168,11 +169,25 @@ interface MigrationPlan {
 const TARGETS = ["k3s", "microk8s", "talos", "eks", "gke", "aks"];
 const riskTone = (r?: string) => (r === "high" ? "text-danger" : r === "medium" ? "text-warn" : "text-muted");
 
+interface MigrationRun {
+  id: string;
+  source: string;
+  target: string;
+  steps: number;
+  risks: number;
+  at: string;
+}
+
 function MigrationPanel({ sources }: { sources: SourceCluster[] }) {
   const [source, setSource] = useState(sources[0]?.id ?? "");
   const [target, setTarget] = useState("eks");
   const [plan, setPlan] = useState<MigrationPlan | null>(null);
   const [busy, setBusy] = useState(false);
+  const [history, setHistory] = useState<MigrationRun[]>([]);
+
+  const loadHistory = () =>
+    fetch("/api/agents/migration").then((r) => r.json()).then((d) => setHistory(d.data?.history ?? [])).catch(() => {});
+  usePolling(loadHistory, 8000);
 
   async function run() {
     setBusy(true);
@@ -185,6 +200,7 @@ function MigrationPanel({ sources }: { sources: SourceCluster[] }) {
     const data = await res.json();
     setPlan(data.data ?? null);
     setBusy(false);
+    loadHistory();
   }
 
   return (
@@ -247,6 +263,24 @@ function MigrationPanel({ sources }: { sources: SourceCluster[] }) {
                 </ul>
               </div>
             )}
+          </div>
+        )}
+
+        {history.length > 0 && (
+          <div className="border-t border-border pt-3">
+            <div className="text-[10px] uppercase tracking-wide text-muted">Memory · recent runs</div>
+            <ul className="mt-1.5 space-y-1">
+              {history.slice(0, 5).map((h) => (
+                <li key={h.id} className="flex items-center justify-between text-xs">
+                  <span className="font-mono">
+                    {h.source} → {h.target}
+                  </span>
+                  <span className="text-muted">
+                    {h.steps} steps · {h.risks} risk{h.risks === 1 ? "" : "s"}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

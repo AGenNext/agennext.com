@@ -128,6 +128,25 @@ export class DataFabric {
     return { nodes, edges };
   }
 
+  /**
+   * Agent memory write: persist a node the platform produced itself (e.g. a
+   * migration run). Unlike {@link upsert} this is not gated by the public
+   * write flag/authz — it is the system writing to its own durable memory
+   * (SurrealDB when configured, else the file store), shared across agents.
+   */
+  async remember(node: GraphNode): Promise<GraphNode> {
+    const target = this.connectors.find((c) => c.writable && c.upsert);
+    if (!target?.upsert) throw new Error("No writable connector for memory.");
+    return span("fabric.remember", async () => {
+      const saved = await target.upsert!(node);
+      this.mutationVersion++;
+      metrics.counter("agennext_fabric_memory_total", "Nodes written to agent memory", {
+        connector: target.id,
+      });
+      return saved;
+    });
+  }
+
   async health(): Promise<{ status: Health["status"]; connectors: Array<{ id: string } & Health> }> {
     const reports = await Promise.all(
       this.connectors.map(async (c) => ({ id: c.id, ...(await c.health()) })),

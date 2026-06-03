@@ -14,6 +14,7 @@ import { z } from "zod";
 import { CLUSTERS, planMigration } from "@/lib/migration/migration";
 import { SEED } from "@/lib/fabric/seed";
 import { edgesFrom } from "@/lib/fabric";
+import { migrationHistory, recordMigration } from "@/lib/agents/memory";
 import { shortestPath } from "@/lib/graph/algorithms";
 import { getString, getTypes, iri, labelOf } from "@/lib/protocol";
 
@@ -35,6 +36,25 @@ server.tool(
     return { content: [{ type: "text", text: JSON.stringify(planMigration(cluster, target), null, 2) }] };
   },
 );
+
+server.tool(
+  "migration_run",
+  "Plan a migration AND record it to shared agent memory (SurrealDB/file)",
+  { source: z.string(), target: z.enum(["k3s", "microk8s", "talos", "eks", "gke", "aks"]) },
+  async ({ source, target }) => {
+    const cluster = CLUSTERS[source];
+    if (!cluster) {
+      return { content: [{ type: "text", text: `Unknown source cluster: ${source}` }], isError: true };
+    }
+    const plan = planMigration(cluster, target);
+    const memoryId = await recordMigration(plan);
+    return { content: [{ type: "text", text: JSON.stringify({ memoryId, plan }, null, 2) }] };
+  },
+);
+
+server.tool("migration_history", "List recent migration runs from shared memory", {}, async () => ({
+  content: [{ type: "text", text: JSON.stringify(await migrationHistory(), null, 2) }],
+}));
 
 server.tool(
   "graph_query",

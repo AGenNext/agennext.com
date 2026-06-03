@@ -359,7 +359,7 @@ const BLOCKS: GraphNode[] = [
     name: "Research Assistant Template",
     description: "Blueprint for an agent that explores the graph and writes briefs.",
     author: ref("agennext"),
-    hasPart: [ref("skill-graph-traversal"), ref("skill-summarization"), ref("tool-fabric-query"), ref("knowledge-graph")],
+    hasPart: [ref("skill-graph-traversal"), ref("skill-summarization"), ref("skill-shortest-path"), ref("tool-fabric-query"), ref("tool-path-finder"), ref("knowledge-graph")],
   },
   {
     "@id": iri("template-ops-copilot"),
@@ -368,7 +368,7 @@ const BLOCKS: GraphNode[] = [
     name: "Ops Copilot Template",
     description: "Blueprint for an agent that audits health and control-plane state.",
     author: ref("agennext"),
-    hasPart: [ref("skill-health-audit"), ref("tool-metrics"), ref("tool-control")],
+    hasPart: [ref("skill-health-audit"), ref("skill-reconciliation"), ref("tool-metrics"), ref("tool-control")],
   },
   {
     "@id": iri("template-rag-agent"),
@@ -385,6 +385,8 @@ const BLOCKS: GraphNode[] = [
   { "@id": iri("skill-entity-extraction"), "@type": "SoftwareApplication", applicationCategory: "Skill", name: "Entity Extraction", description: "Turn text into typed schema.org nodes." },
   { "@id": iri("skill-shortest-path"), "@type": "SoftwareApplication", applicationCategory: "Skill", name: "Shortest-Path Routing", description: "Find the route between two entities." },
   { "@id": iri("skill-health-audit"), "@type": "SoftwareApplication", applicationCategory: "Skill", name: "Health Audit", description: "Assess connectors, flags, and reconciliation state." },
+  { "@id": iri("skill-reconciliation"), "@type": "SoftwareApplication", applicationCategory: "Skill", name: "Reconciliation", description: "Plan actions to drive observed state toward desired state." },
+  { "@id": iri("skill-classification"), "@type": "SoftwareApplication", applicationCategory: "Skill", name: "Type Classification", description: "Assign schema.org types to entities from the meta-model." },
   // Tools (real platform endpoints)
   { "@id": iri("tool-fabric-query"), "@type": "SoftwareApplication", applicationCategory: "Tool", name: "Fabric Query", description: "Query the graph via /api/graph.", url: "https://agennext.com/api/graph" },
   { "@id": iri("tool-path-finder"), "@type": "SoftwareApplication", applicationCategory: "Tool", name: "Path Finder", description: "Shortest route via /api/path.", url: "https://agennext.com/api/path" },

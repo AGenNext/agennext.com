@@ -2,6 +2,7 @@ import { RESEARCH_AGENT } from "@/lib/agents/research";
 import { OPERATIONS_AGENT } from "@/lib/agents/operations";
 import { K8S_AGENT } from "@/lib/agents/k8s";
 import { OPERATOR_AGENT } from "@/lib/agents/operator";
+import { MIGRATION_AGENT } from "@/lib/agents/migration";
 
 /**
  * Agent Runtime — the lightweight agent registry/dispatcher.
@@ -16,7 +17,7 @@ export interface AgentDescriptor {
   description: string;
   endpoint: string;
   /** Input the agent expects, for the UI to render a runner. */
-  input: "subject" | "none";
+  input: "subject" | "none" | "migration";
 }
 
 export const AGENT_CORE = {
@@ -30,6 +31,7 @@ const ALL_AGENTS: AgentDescriptor[] = [
   { ...OPERATIONS_AGENT, endpoint: "/api/agents/operations", input: "none" },
   { ...K8S_AGENT, endpoint: "/api/agents/k8s", input: "none" },
   { ...OPERATOR_AGENT, endpoint: "/api/agents/operator", input: "none" },
+  { ...MIGRATION_AGENT, endpoint: "/api/agents/migration", input: "migration" },
 ];
 
 /**

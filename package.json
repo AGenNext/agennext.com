@@ -9,10 +9,12 @@
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit",
-    "proto:gen": "buf generate"
+    "proto:gen": "buf generate",
+    "mcp": "tsx mcp/server.ts"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.12.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/context-async-hooks": "^2.7.1",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.218.0",
@@ -25,7 +27,8 @@
     "next": "16.2.7",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "schemaorg-jsonld": "^1.2.2"
+    "schemaorg-jsonld": "^1.2.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@bufbuild/buf": "^1.70.0",
@@ -36,6 +39,7 @@
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
     "testcontainers": "^12.0.1",
+    "tsx": "^4.22.4",
     "typescript": "^5",
     "vitest": "^4.1.8"
   }

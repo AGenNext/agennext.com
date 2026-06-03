@@ -23,9 +23,16 @@ interface PathStep {
   relation: string;
 }
 
-export function AgentsRunner({ nodes }: { nodes: NodeOption[] }) {
+export interface SourceCluster {
+  id: string;
+  name: string;
+  distro: string;
+}
+
+export function AgentsRunner({ nodes, sources = [] }: { nodes: NodeOption[]; sources?: SourceCluster[] }) {
   return (
     <div className="grid gap-8 lg:grid-cols-2">
+      <MigrationPanel sources={sources} />
       <ResearchPanel nodes={nodes} />
       <RoutePanel nodes={nodes} />
       <ReportPanel
@@ -146,6 +153,102 @@ function ReportPanel({
           {busy ? "Running…" : "Run"}
         </button>
         {data != null && render(data)}
+      </div>
+    </div>
+  );
+}
+
+interface MigrationPlan {
+  summary: string;
+  steps: { phase: string; order: number; title: string; detail: string; risk?: string }[];
+  risks: string[];
+  rollbackPlan: string[];
+}
+
+const TARGETS = ["k3s", "microk8s", "eks", "gke", "aks"];
+const riskTone = (r?: string) => (r === "high" ? "text-danger" : r === "medium" ? "text-warn" : "text-muted");
+
+function MigrationPanel({ sources }: { sources: SourceCluster[] }) {
+  const [source, setSource] = useState(sources[0]?.id ?? "");
+  const [target, setTarget] = useState("eks");
+  const [plan, setPlan] = useState<MigrationPlan | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function run() {
+    setBusy(true);
+    setPlan(null);
+    const res = await fetch("/api/agents/migration", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ source, target }),
+    });
+    const data = await res.json();
+    setPlan(data.data ?? null);
+    setBusy(false);
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <SectionLabel>Migration Agent</SectionLabel>
+        <Badge tone="accent">Agent</Badge>
+      </div>
+      <div className="card mt-3 space-y-3 p-4">
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block text-xs text-muted">
+            source cluster
+            <select className="input mt-1" value={source} onChange={(e) => setSource(e.target.value)}>
+              {sources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.distro})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs text-muted">
+            target distro
+            <select className="input mt-1" value={target} onChange={(e) => setTarget(e.target.value)}>
+              {TARGETS.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <button onClick={run} disabled={busy || !source} className="btn btn-primary disabled:opacity-50">
+          {busy ? "Planning…" : "Plan migration"}
+        </button>
+
+        {plan && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted">{plan.summary}</p>
+            <ol className="space-y-1.5">
+              {plan.steps.map((s) => (
+                <li key={s.order} className="rounded-md border border-border p-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">
+                      <span className="font-mono text-[10px] uppercase text-muted">{s.phase} </span>
+                      {s.title}
+                    </span>
+                    {s.risk && <span className={riskTone(s.risk)}>{s.risk}</span>}
+                  </div>
+                  <div className="mt-1 text-muted">{s.detail}</div>
+                </li>
+              ))}
+            </ol>
+            {plan.risks.length > 0 && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wide text-warn">Risks</div>
+                <ul className="mt-1 list-disc pl-4 text-xs text-muted">
+                  {plan.risks.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

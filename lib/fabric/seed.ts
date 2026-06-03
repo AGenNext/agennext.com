@@ -592,6 +592,17 @@ export const SEED: GraphNode[] = [
     isPartOf: ref("platform"),
     about: ref("term-cloud-native"),
   },
+  {
+    "@id": iri("agent-migration"),
+    "@type": ["SoftwareApplication"],
+    name: "Migration Agent",
+    applicationCategory: "Agent",
+    description:
+      "Plans and validates Kubernetes migrations (k3s ↔ MicroK8s, EKS/GKE/AKS): discovery, planning with risk analysis, validation, and rollback.",
+    author: ref("agennext"),
+    isPartOf: ref("platform"),
+    about: ref("term-cloud-native"),
+  },
   ...BLOCKS,
   ...STACK,
   ...REPOS,

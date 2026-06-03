@@ -1,0 +1,14 @@
+{
+  "name": "agennext-headlamp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AGenNext agent platform panels for Headlamp (Kubernetes UI).",
+  "scripts": {
+    "start": "headlamp-plugin start",
+    "build": "headlamp-plugin build",
+    "lint": "headlamp-plugin lint"
+  },
+  "devDependencies": {
+    "@kinvolk/headlamp-plugin": "latest"
+  }
+}

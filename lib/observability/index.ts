@@ -45,11 +45,19 @@ interface Series {
 
 const registry = new Map<string, Series>();
 
+/** OpenMetrics label-value escaping: backslash first, then quote and newline. */
+function escapeLabelValue(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n");
+}
+
 function key(labels?: Attributes): string {
   if (!labels) return "";
   return Object.keys(labels)
     .sort()
-    .map((k) => `${k}="${String(labels[k]).replace(/"/g, '\\"')}"`)
+    .map((k) => `${k}="${escapeLabelValue(String(labels[k]))}"`)
     .join(",");
 }
 

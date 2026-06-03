@@ -42,6 +42,44 @@ export function AgentsRunner({ nodes }: { nodes: NodeOption[] }) {
           </pre>
         )}
       />
+      <ReportPanel
+        title="Operator Agent"
+        endpoint="/api/agents/operator"
+        render={(d) => <OperatorPlan plan={d as PlanData} />}
+      />
+    </div>
+  );
+}
+
+interface PlanData {
+  verdict: string;
+  actions: { priority: number; action: string; reason: string }[];
+}
+
+function OperatorPlan({ plan }: { plan: PlanData }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm">
+        Verdict:{" "}
+        <span className={plan.verdict === "ok" ? "text-ok" : plan.verdict === "warn" ? "text-warn" : "text-danger"}>
+          {plan.verdict}
+        </span>
+      </div>
+      {plan.actions.length === 0 ? (
+        <p className="text-xs text-muted">No actions — platform reconciled.</p>
+      ) : (
+        <ol className="space-y-1.5">
+          {plan.actions.map((a, i) => (
+            <li key={i} className="rounded-md border border-border p-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="pill px-1.5 py-0.5 text-[10px] text-accent">P{a.priority}</span>
+                <span className="font-medium">{a.action}</span>
+              </div>
+              <div className="mt-1 text-muted">{a.reason}</div>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }

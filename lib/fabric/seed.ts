@@ -19,6 +19,33 @@ const ref = (slug: string) => ({ "@id": iri(slug) });
  */
 const STACK: GraphNode[] = [
   {
+    "@id": iri("tech-spacetimedb"),
+    "@type": "SoftwareApplication",
+    name: "SpacetimeDB",
+    applicationCategory: "Agentic Database",
+    description: "DB-as-agents: a database that runs application logic, a candidate agentic backend.",
+    url: "https://spacetimedb.com/",
+    sameAs: "https://spacetimedb.com/",
+  },
+  {
+    "@id": iri("tech-convex"),
+    "@type": "SoftwareApplication",
+    name: "Convex",
+    applicationCategory: "Agentic Database",
+    description: "DB-as-agents: a reactive backend where functions live next to the data.",
+    url: "https://www.convex.dev/",
+    sameAs: "https://www.convex.dev/",
+  },
+  {
+    "@id": iri("tech-clickstack"),
+    "@type": "SoftwareApplication",
+    name: "ClickStack",
+    applicationCategory: "Agentic Database",
+    description: "DB-as-agents: ClickHouse-based observability/analytics backend for agent telemetry.",
+    url: "https://clickhouse.com/clickstack",
+    sameAs: "https://clickhouse.com/clickstack",
+  },
+  {
     "@id": iri("tech-protobuf"),
     "@type": "SoftwareApplication",
     name: "Protocol Buffers",
@@ -401,6 +428,9 @@ export const SEED: GraphNode[] = [
     isPartOf: ref("website"),
     about: ref("graph"),
     isBasedOn: [
+      ref("tech-spacetimedb"),
+      ref("tech-convex"),
+      ref("tech-clickstack"),
       ref("tech-protobuf"),
       ref("tech-crossplane"),
       ref("tech-flux"),
@@ -504,12 +534,12 @@ export const SEED: GraphNode[] = [
     url: "https://www.w3.org/standards/semanticweb/data",
   },
   {
-    "@id": iri("agent-core"),
+    "@id": iri("agent-runtime"),
     "@type": ["SoftwareApplication"],
-    name: "AgentCore",
+    name: "Agent Runtime",
     applicationCategory: "Agent",
     description:
-      "The agent runtime: registers, describes, and dispatches the platform's agents over the data fabric.",
+      "The agent runtime: registers, describes, and dispatches the platform's agents over the data fabric. Our own implementation of the agent-runtime pattern (distinct from AWS Bedrock AgentCore).",
     author: ref("agennext"),
     isPartOf: ref("platform"),
     about: ref("graph"),
@@ -545,6 +575,17 @@ export const SEED: GraphNode[] = [
     applicationCategory: "Agent",
     description:
       "Describes the intended Kubernetes topology from the control-plane spec and flags deployment risks.",
+    author: ref("agennext"),
+    isPartOf: ref("platform"),
+    about: ref("term-cloud-native"),
+  },
+  {
+    "@id": iri("agent-operator"),
+    "@type": ["SoftwareApplication"],
+    name: "Operator Agent",
+    applicationCategory: "Agent",
+    description:
+      "A control-loop agent that reconciles the platform: synthesizes ops + k8s signals into a prioritized action plan.",
     author: ref("agennext"),
     isPartOf: ref("platform"),
     about: ref("term-cloud-native"),

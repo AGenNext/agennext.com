@@ -25,7 +25,7 @@ server.tool("list_clusters", "List known Kubernetes clusters and their inventory
   content: [{ type: "text", text: JSON.stringify(Object.values(CLUSTERS), null, 2) }],
 }));
 
-const PROVIDER_ENUM = z.enum(["aws", "gcp", "azure", "cloudstack", "edge", "onprem"]);
+const PROVIDER_ENUM = z.enum(["aws", "gcp", "azure", "ovh", "cloudstack", "edge", "onprem"]);
 
 server.tool(
   "list_providers",

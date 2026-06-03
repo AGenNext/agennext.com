@@ -8,9 +8,9 @@
  * Kubernetes MCP server in a live deployment.
  */
 
-export type Distro = "k3s" | "microk8s" | "talos" | "eks" | "gke" | "aks";
+export type Distro = "k3s" | "microk8s" | "talos" | "eks" | "gke" | "aks" | "ovh";
 
-export const MANAGED: Distro[] = ["eks", "gke", "aks"];
+export const MANAGED: Distro[] = ["eks", "gke", "aks", "ovh"];
 
 export interface Workload {
   name: string;
@@ -94,7 +94,7 @@ export const CLUSTERS: Record<string, ClusterInventory> = {
  * migrations target a provider, not just a distro. Managed providers pin the
  * distro (aws→eks, gcp→gke, azure→aks); self-managed providers run k3s/Talos.
  */
-export type Provider = "aws" | "gcp" | "azure" | "cloudstack" | "edge" | "onprem";
+export type Provider = "aws" | "gcp" | "azure" | "ovh" | "cloudstack" | "edge" | "onprem";
 
 export interface ProviderInfo {
   id: Provider;
@@ -110,6 +110,7 @@ export const PROVIDERS: Record<Provider, ProviderInfo> = {
   aws: { id: "aws", name: "AWS", managed: true, distro: "eks", loadBalancer: "Network Load Balancer", objectStore: "s3.<region>.amazonaws.com", identity: "IAM / IRSA" },
   gcp: { id: "gcp", name: "Google Cloud", managed: true, distro: "gke", loadBalancer: "Cloud Load Balancing", objectStore: "storage.googleapis.com", identity: "Workload Identity" },
   azure: { id: "azure", name: "Azure", managed: true, distro: "aks", loadBalancer: "Azure Load Balancer", objectStore: "blob.core.windows.net", identity: "Entra Workload ID" },
+  ovh: { id: "ovh", name: "OVHcloud", managed: true, distro: "ovh", loadBalancer: "OVH Load Balancer", objectStore: "s3.<region>.io.cloud.ovh.net (S3-compatible)", identity: "OVH IAM / SPIFFE" },
   cloudstack: { id: "cloudstack", name: "CloudStack", managed: false, distro: "k3s", loadBalancer: "CloudStack LB", objectStore: "S3-compatible (MinIO)", identity: "SPIFFE" },
   edge: { id: "edge", name: "Edge", managed: false, distro: "talos", loadBalancer: "MetalLB", objectStore: "S3-compatible (MinIO)", identity: "SPIFFE" },
   onprem: { id: "onprem", name: "On-prem", managed: false, distro: "talos", loadBalancer: "MetalLB", objectStore: "S3-compatible (Ceph/MinIO)", identity: "SPIFFE" },
@@ -149,6 +150,7 @@ const STORAGE_CLASS: Record<Distro, string> = {
   eks: "gp3",
   gke: "standard-rwo",
   aks: "managed-csi",
+  ovh: "csi-cinder-high-speed",
 };
 
 const INGRESS: Record<Distro, string> = {
@@ -158,6 +160,7 @@ const INGRESS: Record<Distro, string> = {
   eks: "aws-load-balancer-controller",
   gke: "gce",
   aks: "application-gateway",
+  ovh: "nginx",
 };
 
 export function planMigration(source: ClusterInventory, target: Distro, provider?: Provider): MigrationPlan {

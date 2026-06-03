@@ -42,6 +42,14 @@ describe("migration planner", () => {
     expect(titles).toContain("Map workload identity");
   });
 
+  it("supports OVHcloud as a managed provider", () => {
+    expect(resolveTargetDistro("ovh")).toBe("ovh");
+    const plan = planMigration(CLUSTERS["k3s-edge"], resolveTargetDistro("ovh"), "ovh");
+    expect(plan.targetProvider).toBe("ovh");
+    expect(plan.steps.some((s) => s.title === "Provision managed cluster on OVHcloud")).toBe(true);
+    expect(plan.steps.some((s) => s.title === "Re-point service endpoints")).toBe(true);
+  });
+
   it("does not add a provision step for self-managed providers", () => {
     const plan = planMigration(CLUSTERS["k3s-edge"], resolveTargetDistro("onprem"), "onprem");
     expect(plan.steps.some((s) => s.title.startsWith("Provision managed cluster"))).toBe(false);

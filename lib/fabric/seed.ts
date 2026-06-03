@@ -607,6 +607,17 @@ export const SEED: GraphNode[] = [
     url: "https://www.w3.org/standards/semanticweb/data",
   },
   {
+    "@id": iri("constitution"),
+    "@type": "TechArticle",
+    name: "Agent Constitution",
+    headline: "Governing principles for secure, governable, human-overseen agents",
+    description:
+      "The constitution every agent on the platform must uphold: identity, least privilege, safety by default, human oversight, accountability, reversibility, provenance, governability, transparency, non-maleficence.",
+    author: ref("agennext"),
+    isPartOf: ref("platform"),
+    about: ref("agent-runtime"),
+  },
+  {
     "@id": iri("agent-runtime"),
     "@type": ["SoftwareApplication"],
     name: "Agent Runtime",

@@ -1,5 +1,6 @@
 import type { Connector } from "@/lib/fabric/connector";
 import { MemoryConnector } from "@/lib/fabric/connectors/memory";
+import { FileConnector } from "@/lib/fabric/connectors/file";
 import { SurrealConnector, surrealConfigFromEnv } from "@/lib/fabric/connectors/surreal";
 import { EDGE_PROPERTIES } from "@/lib/schema/org";
 import { flags, FLAGS } from "@/lib/flags";
@@ -26,6 +27,9 @@ import {
  */
 export class DataFabric {
   private connectors: Connector[];
+  /** Bumped on every write to invalidate the incoming-edge index. */
+  private mutationVersion = 0;
+  private index: { version: number; incoming: Map<string, Edge[]> } | null = null;
 
   constructor(connectors: Connector[]) {
     this.connectors = connectors;
@@ -62,17 +66,31 @@ export class DataFabric {
       if (!node) return null;
 
       const outgoing = edgesFrom(node);
-      // Incoming edges require scanning the graph; cheap at this scale.
-      const all = (await this.query({})).items;
-      const incoming: Edge[] = [];
-      for (const other of all) {
-        if (other["@id"] === id) continue;
-        for (const e of edgesFrom(other)) {
-          if (e.to === id) incoming.push(e);
-        }
-      }
+      // Incoming edges come from a cached adjacency index (O(degree) lookup)
+      // instead of rescanning the whole graph on every request.
+      const incoming = (await this.incomingIndex()).get(id) ?? [];
       return { node, outgoing, incoming };
     });
+  }
+
+  /**
+   * Build (once) and reuse an id -> incoming-edges index. Invalidated whenever
+   * a write goes through {@link upsert} (bumping `mutationVersion`), so reads
+   * after a write rebuild lazily. Correct for writes made through the fabric;
+   * external direct mutations of a connector are out of scope for the cache.
+   */
+  private async incomingIndex(): Promise<Map<string, Edge[]>> {
+    if (this.index && this.index.version === this.mutationVersion) return this.index.incoming;
+    const incoming = new Map<string, Edge[]>();
+    for (const n of (await this.query({})).items) {
+      for (const e of edgesFrom(n)) {
+        const list = incoming.get(e.to);
+        if (list) list.push(e);
+        else incoming.set(e.to, [e]);
+      }
+    }
+    this.index = { version: this.mutationVersion, incoming };
+    return incoming;
   }
 
   async upsert(node: GraphNode, principal: Principal | null): Promise<GraphNode> {
@@ -87,6 +105,7 @@ export class DataFabric {
       "fabric.upsert",
       async () => {
         const saved = await target.upsert!(node);
+        this.mutationVersion++; // invalidate the incoming-edge index
         log.info("fabric.upsert", {
           id: saved["@id"],
           by: principal!.id.toString(),
@@ -133,9 +152,12 @@ function edgesFrom(node: GraphNode): Edge[] {
 let singleton: DataFabric | null = null;
 
 /**
- * Build the fabric from configuration. SurrealDB is layered in front of the
- * in-memory connector when both the OpenFeature flag and env config are
- * present; otherwise the platform runs fully in-memory with zero config.
+ * Build the fabric from configuration. Connector precedence:
+ *   1. SurrealDB — when its OpenFeature flag + connection env are present.
+ *   2. A durable store — the default. A file store persists to `DATA_DIR`
+ *      (defaults to `.data`) so the graph survives restarts; set
+ *      `DATA_STORE=memory` (or run under Vitest) for an ephemeral in-memory
+ *      store with zero filesystem writes.
  */
 export function getFabric(): DataFabric {
   if (singleton) return singleton;
@@ -151,7 +173,15 @@ export function getFabric(): DataFabric {
     }
   }
 
-  connectors.push(new MemoryConnector());
+  const ephemeral = process.env.DATA_STORE === "memory" || !!process.env.VITEST;
+  if (ephemeral) {
+    connectors.push(new MemoryConnector());
+  } else {
+    const dir = process.env.DATA_DIR ?? ".data";
+    connectors.push(new FileConnector(dir));
+    log.info("fabric.connector.enabled", { connector: "file", dir });
+  }
+
   singleton = new DataFabric(connectors);
   return singleton;
 }

@@ -55,8 +55,17 @@ npm install
 npm run dev      # http://localhost:3000
 ```
 
-Zero config: the platform runs fully in-memory with a self-describing seed
-graph. Enable SurrealDB with the OpenFeature flag + connection URL:
+By default the graph is **durable**: a file store persists to `DATA_DIR`
+(defaults to `.data`) and survives restarts, with forward migrations on load.
+For an ephemeral in-memory store (no filesystem writes) set `DATA_STORE=memory`.
+
+```bash
+DATA_DIR=/var/lib/agennext npm run dev   # durable at a custom path
+DATA_STORE=memory npm run dev            # ephemeral
+```
+
+Enable SurrealDB (for scale / multi-replica) with the OpenFeature flag +
+connection URL:
 
 ```bash
 FLAG_SURREAL_CONNECTOR=true SURREAL_URL=http://localhost:8000 npm run dev

@@ -9,7 +9,9 @@ metadata:
     app.kubernetes.io/name: agennext
     app.kubernetes.io/part-of: agennext-platform
 spec:
-  replicas: 2
+  # 1 replica: the default file store is single-writer (RWO volume).
+  # Use the SurrealDB connector to scale out.
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: agennext
@@ -32,11 +34,17 @@ spec:
           env:
             - name: SPIFFE_TRUST_DOMAIN
               value: agennext.com
+            # Durable file store on the mounted volume (survives restarts).
+            - name: DATA_DIR
+              value: /data
             # Opt-in SurrealDB connector (OpenFeature flag + connection URL):
             # - name: FLAG_SURREAL_CONNECTOR
             #   value: "true"
             # - name: SURREAL_URL
             #   value: http://surrealdb:8000
+          volumeMounts:
+            - name: data
+              mountPath: /data
           livenessProbe:
             httpGet:
               path: /api/healthz
@@ -56,6 +64,22 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: agennext-data
+---
+# The file store is single-writer (ReadWriteOnce). Keep replicas: 1 here, or
+# switch to the SurrealDB connector for a multi-replica / HA deployment.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agennext-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
 ---
 apiVersion: v1
 kind: Service

@@ -36,6 +36,24 @@ describe("DataFabric", () => {
     expect(await fabric().node(iri("nope"))).toBeNull();
   });
 
+  it("reflects writes in the cached incoming-edge index", async () => {
+    process.env.FLAG_WRITE_API = "true";
+    const f = fabric();
+    expect((await f.node(iri("org")))!.incoming).toHaveLength(2);
+    // A new node referencing org must appear in incoming after the write
+    // invalidates the index.
+    await f.upsert(
+      { "@id": iri("sponsor"), "@type": "Organization", name: "S", sponsor: { "@id": iri("org") } },
+      WRITER,
+    );
+    expect((await f.node(iri("org")))!.incoming.map((e) => e.property).sort()).toEqual([
+      "publisher",
+      "sponsor",
+      "worksFor",
+    ]);
+    delete process.env.FLAG_WRITE_API;
+  });
+
   describe("write path", () => {
     beforeEach(() => {
       delete process.env.FLAG_WRITE_API;

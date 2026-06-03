@@ -117,6 +117,15 @@ const STACK: GraphNode[] = [
     sameAs: "https://github.com/wasmCloud/wasmCloud",
   },
   {
+    "@id": iri("tech-instructor"),
+    "@type": "SoftwareApplication",
+    name: "Instructor",
+    applicationCategory: "MachineLearning",
+    description: "Structured LLM outputs; extracts typed Schema.org nodes from unstructured sources.",
+    url: "https://python.useinstructor.com/",
+    sameAs: "https://github.com/567-labs/instructor",
+  },
+  {
     "@id": iri("tech-numaflow"),
     "@type": "SoftwareApplication",
     name: "Numaflow",
@@ -300,6 +309,7 @@ export const SEED: GraphNode[] = [
       ref("tech-cubesandbox"),
       ref("tech-kgateway"),
       ref("tech-numaflow"),
+      ref("tech-instructor"),
     ],
   },
   {

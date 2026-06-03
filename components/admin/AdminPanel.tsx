@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SectionLabel, StatusDot } from "@/components/ui";
+import { usePolling } from "@/components/usePolling";
 
 /**
  * Dev-convenience writer identity. In production the service mesh injects the
@@ -58,9 +59,9 @@ function tone(c: string) {
 
 function Overview() {
   const [control, setControl] = useState<Control | null>(null);
-  useEffect(() => {
+  usePolling(() => {
     fetch("/api/control").then((r) => r.json()).then((d) => setControl(d.data)).catch(() => {});
-  }, []);
+  }, 5000);
 
   if (!control) return <p className="text-sm text-muted">Loading…</p>;
   return (
@@ -326,18 +327,27 @@ interface Span {
 
 function Traces() {
   const [spans, setSpans] = useState<Span[]>([]);
+  const [live, setLive] = useState(true);
   const load = useCallback(() => {
     fetch("/api/traces").then((r) => r.json()).then((d) => setSpans(d.spans ?? [])).catch(() => {});
   }, []);
-  useEffect(load, [load]);
+  usePolling(load, 3000, live);
 
   return (
     <div>
       <div className="flex items-center justify-between">
         <SectionLabel>Recent spans ({spans.length})</SectionLabel>
-        <button onClick={load} className="btn btn-ghost py-1">
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setLive((v) => !v)}
+            className={`pill px-2.5 py-1 text-xs ${live ? "text-ok" : "text-muted"}`}
+          >
+            <StatusDot tone={live ? "ok" : "muted"} /> {live ? "live" : "paused"}
+          </button>
+          <button onClick={load} className="btn btn-ghost py-1">
+            Refresh
+          </button>
+        </div>
       </div>
       {spans.length === 0 ? (
         <p className="mt-4 text-sm text-muted">

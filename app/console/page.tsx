@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { usePolling } from "@/components/usePolling";
 
 /**
  * Interactive query console for the data fabric.
@@ -33,12 +34,12 @@ export default function ConsolePage() {
     setLoading(false);
   }
 
-  useEffect(() => {
+  usePolling(() => {
     fetch("/api/readyz")
       .then((r) => r.json())
       .then(setHealth)
       .catch(() => setHealth(null));
-  }, []);
+  }, 5000);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">

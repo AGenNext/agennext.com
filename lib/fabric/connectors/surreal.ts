@@ -36,12 +36,36 @@ export function surrealConfigFromEnv(): SurrealConfig | null {
   };
 }
 
+/**
+ * Render a value as a safe SurrealQL string literal. JSON.stringify emits a
+ * double-quoted, fully-escaped string (SurrealDB accepts double-quoted
+ * strings), which closes the injection vector of naive single-quoting.
+ */
+function lit(value: string): string {
+  return JSON.stringify(String(value));
+}
+
+/** Coerce to a safe, non-negative integer for LIMIT/START clauses. */
+function int(value: number): number {
+  const n = Math.trunc(Number(value));
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 export class SurrealConnector implements Connector {
   readonly id = "surreal";
   readonly name = "SurrealDB";
   readonly writable = true;
 
-  constructor(private cfg: SurrealConfig) {}
+  /** Validated table identifier — never interpolate an unchecked one. */
+  private readonly table: string;
+
+  constructor(private cfg: SurrealConfig) {
+    const table = cfg.table ?? "thing";
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table)) {
+      throw new Error(`Unsafe SurrealDB table identifier: ${table}`);
+    }
+    this.table = table;
+  }
 
   private async sql<T>(query: string): Promise<T[]> {
     const headers: Record<string, string> = {
@@ -67,24 +91,27 @@ export class SurrealConnector implements Connector {
 
   async list(query: Query): Promise<GraphNode[]> {
     const where: string[] = [];
-    if (query.type) where.push(`'${query.type}' IN type`);
-    if (query.text) where.push(`string::lowercase(name ?? '') CONTAINS string::lowercase('${query.text}')`);
+    if (query.type) where.push(`${lit(query.type)} IN type`);
+    if (query.text) {
+      where.push(`string::lowercase(name ?? '') CONTAINS string::lowercase(${lit(query.text)})`);
+    }
     const clause = where.length ? ` WHERE ${where.join(" AND ")}` : "";
-    const limit = query.limit ? ` LIMIT ${query.limit}` : "";
-    const start = query.offset ? ` START ${query.offset}` : "";
-    return this.sql<GraphNode>(`SELECT * FROM ${this.cfg.table}${clause}${limit}${start};`);
+    const limit = query.limit ? ` LIMIT ${int(query.limit)}` : "";
+    const start = query.offset ? ` START ${int(query.offset)}` : "";
+    return this.sql<GraphNode>(`SELECT * FROM ${this.table}${clause}${limit}${start};`);
   }
 
   async get(id: string): Promise<GraphNode | null> {
     const rows = await this.sql<GraphNode>(
-      `SELECT * FROM ${this.cfg.table} WHERE id = '${id}' LIMIT 1;`,
+      `SELECT * FROM ${this.table} WHERE id = ${lit(id)} LIMIT 1;`,
     );
     return rows[0] ?? null;
   }
 
   async upsert(node: GraphNode): Promise<GraphNode> {
+    // JSON.stringify yields a fully-escaped object literal; id is escaped too.
     await this.sql(
-      `UPSERT ${this.cfg.table} CONTENT ${JSON.stringify(node)} WHERE id = '${node["@id"]}';`,
+      `UPSERT ${this.table} CONTENT ${JSON.stringify(node)} WHERE id = ${lit(node["@id"])};`,
     );
     return node;
   }
@@ -92,7 +119,7 @@ export class SurrealConnector implements Connector {
   async health(): Promise<Health> {
     try {
       const rows = await this.sql<{ c: number }>(
-        `SELECT count() AS c FROM ${this.cfg.table} GROUP ALL;`,
+        `SELECT count() AS c FROM ${this.table} GROUP ALL;`,
       );
       return { status: "ok", nodes: rows[0]?.c ?? 0, detail: "surrealdb" };
     } catch (err) {

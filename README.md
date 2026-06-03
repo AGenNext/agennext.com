@@ -77,6 +77,16 @@ Enable the write API:
 FLAG_WRITE_API=true npm run dev
 ```
 
+## Test
+
+```bash
+npm test               # fast unit suite (Docker-free)
+npm run test:integration   # SurrealDB connector vs a real DB (Testcontainers; needs Docker)
+npm run typecheck
+```
+
+The integration suite skips automatically when no Docker daemon is present.
+
 ## Deploy
 
 Cloud-native by default — `output: "standalone"`, multi-stage `Dockerfile`,

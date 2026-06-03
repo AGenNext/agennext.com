@@ -18,10 +18,13 @@ export function EntityBrowser({
   items,
   placeholder = "Search…",
   emptyLabel = "No matches.",
+  limit,
 }: {
   items: BrowserItem[];
   placeholder?: string;
   emptyLabel?: string;
+  /** Cap rendered cards (the full set can be large, e.g. the vocabulary). */
+  limit?: number;
 }) {
   const [q, setQ] = useState("");
   const [type, setType] = useState<string | null>(null);
@@ -79,17 +82,24 @@ export function EntityBrowser({
       {filtered.length === 0 ? (
         <p className="mt-8 text-sm text-muted">{emptyLabel}</p>
       ) : (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((it) => (
-            <NodeCard
-              key={it.id}
-              href={it.href}
-              type={it.type}
-              title={it.title}
-              description={it.description}
-            />
-          ))}
-        </div>
+        <>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(limit ? filtered.slice(0, limit) : filtered).map((it) => (
+              <NodeCard
+                key={it.id}
+                href={it.href}
+                type={it.type}
+                title={it.title}
+                description={it.description}
+              />
+            ))}
+          </div>
+          {limit && filtered.length > limit && (
+            <p className="mt-4 text-xs text-muted">
+              Showing {limit} of {filtered.length} — refine your search to narrow.
+            </p>
+          )}
+        </>
       )}
     </div>
   );

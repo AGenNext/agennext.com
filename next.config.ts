@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
     "@opentelemetry/exporter-prometheus",
     "@opentelemetry/exporter-trace-otlp-http",
     "@opentelemetry/exporter-metrics-otlp-http",
+    // 744KB vocabulary loaded via require at runtime — keep it out of bundles.
+    "schemaorg-jsonld",
   ],
 };
 

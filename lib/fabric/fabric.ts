@@ -152,34 +152,35 @@ export function edgesFrom(node: GraphNode): Edge[] {
 let singleton: DataFabric | null = null;
 
 /**
- * Build the fabric from configuration. Connector precedence:
- *   1. SurrealDB — when its OpenFeature flag + connection env are present.
- *   2. A durable store — the default. A file store persists to `DATA_DIR`
- *      (defaults to `.data`) so the graph survives restarts; set
- *      `DATA_STORE=memory` (or run under Vitest) for an ephemeral in-memory
- *      store with zero filesystem writes.
+ * Build the fabric from configuration — the backend is fully configurable.
+ * Connector precedence:
+ *   1. SurrealDB — the default/recommended backend, used whenever `SURREAL_URL`
+ *      is set (or the OpenFeature flag forces it). Schemaless + scalable.
+ *   2. A durable file store — fallback when SurrealDB isn't configured.
+ *      Persists to `DATA_DIR` (defaults to `.data`).
+ *   3. In-memory — ephemeral, when `DATA_STORE=memory` or under Vitest.
  */
 export function getFabric(): DataFabric {
   if (singleton) return singleton;
   const connectors: Connector[] = [];
 
-  if (flags.boolean(FLAGS.SURREAL_CONNECTOR, false)) {
-    const cfg = surrealConfigFromEnv();
-    if (cfg) {
-      connectors.push(new SurrealConnector(cfg));
-      log.info("fabric.connector.enabled", { connector: "surreal", url: cfg.url });
-    } else {
-      log.warn("fabric.connector.skipped", { connector: "surreal", reason: "SURREAL_URL unset" });
-    }
+  // SurrealDB is the default backend: enabled by simply providing a URL.
+  const surrealCfg = surrealConfigFromEnv();
+  const surrealForced = flags.boolean(FLAGS.SURREAL_CONNECTOR, false);
+  if (surrealCfg && (surrealForced || process.env.SURREAL_URL)) {
+    connectors.push(new SurrealConnector(surrealCfg));
+    log.info("fabric.connector.enabled", { connector: "surreal", url: surrealCfg.url });
   }
 
-  const ephemeral = process.env.DATA_STORE === "memory" || !!process.env.VITEST;
-  if (ephemeral) {
-    connectors.push(new MemoryConnector());
-  } else {
-    const dir = process.env.DATA_DIR ?? ".data";
-    connectors.push(new FileConnector(dir));
-    log.info("fabric.connector.enabled", { connector: "file", dir });
+  if (connectors.length === 0) {
+    const ephemeral = process.env.DATA_STORE === "memory" || !!process.env.VITEST;
+    if (ephemeral) {
+      connectors.push(new MemoryConnector());
+    } else {
+      const dir = process.env.DATA_DIR ?? ".data";
+      connectors.push(new FileConnector(dir));
+      log.info("fabric.connector.enabled", { connector: "file", dir });
+    }
   }
 
   singleton = new DataFabric(connectors);

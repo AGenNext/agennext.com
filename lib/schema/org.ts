@@ -1,17 +1,29 @@
 /**
- * A curated, typed slice of the schema.org vocabulary.
+ * schema.org type system.
  *
- * The full vocabulary (https://schema.org/docs/full.html) is ~800 types and
- * ~1400 properties. We don't vendor all of it; we capture the subset the
- * platform reasons about — enough to label types, validate a node's shape,
- * and drive the explorer UI — and treat any other schema.org term as valid
- * but unannotated.
+ * The type hierarchy now comes from the complete schema.org meta-model (see
+ * `vocabulary.ts`) rather than a hand-curated subset. This module keeps the
+ * platform-specific bits — which reference-valued properties become graph
+ * edges, their inverse labels, and IRI helpers — and re-exposes the vocabulary
+ * lookups under the existing API.
  */
+import { allClasses, classDef } from "./vocabulary";
+
+export {
+  ancestry,
+  allAncestors,
+  isA,
+  propertiesForType,
+  propertyDef,
+  allProperties,
+  subtypesOf,
+  vocabularyStats,
+  type ClassDef,
+  type PropertyDef,
+} from "./vocabulary";
 
 export interface TypeDef {
-  /** schema.org type name, e.g. "Organization". */
   name: string;
-  /** Direct supertype in the schema.org hierarchy, or null for Thing. */
   parent: string | null;
   comment: string;
 }
@@ -62,46 +74,16 @@ export const INVERSE_LABEL: Record<string, string> = {
   sponsor: "sponsors",
 };
 
-const TYPES: TypeDef[] = [
-  { name: "Thing", parent: null, comment: "The most generic type of item." },
-  { name: "Intangible", parent: "Thing", comment: "A utility class for non-physical things." },
-  { name: "Organization", parent: "Thing", comment: "An organization such as a company or project." },
-  { name: "Person", parent: "Thing", comment: "A person (alive, dead, fictional)." },
-  { name: "CreativeWork", parent: "Thing", comment: "The most generic kind of creative work." },
-  { name: "WebSite", parent: "CreativeWork", comment: "A website." },
-  { name: "WebPage", parent: "CreativeWork", comment: "A web page." },
-  { name: "TechArticle", parent: "CreativeWork", comment: "A technical article such as a spec or how-to." },
-  { name: "SoftwareApplication", parent: "CreativeWork", comment: "A software application." },
-  { name: "SoftwareSourceCode", parent: "CreativeWork", comment: "Computer programming source code." },
-  { name: "Dataset", parent: "CreativeWork", comment: "A body of structured information." },
-  { name: "DefinedTerm", parent: "Intangible", comment: "A word, name or concept defined in a vocabulary." },
-  { name: "Service", parent: "Intangible", comment: "A provided service." },
-];
-
-const BY_NAME = new Map(TYPES.map((t) => [t.name, t]));
-
+/** A type definition in the legacy `{ name, parent, comment }` shape. */
 export function typeDef(name: string): TypeDef | undefined {
-  return BY_NAME.get(name);
+  const c = classDef(name);
+  if (!c) return undefined;
+  return { name: c.name, parent: c.parents[0] ?? null, comment: c.comment };
 }
 
+/** Every schema.org class as a {@link TypeDef}. */
 export function allTypes(): TypeDef[] {
-  return [...TYPES];
-}
-
-/** Ancestor chain from the type up to (and including) Thing. */
-export function ancestry(name: string): string[] {
-  const chain: string[] = [];
-  let cur: string | null = name;
-  while (cur) {
-    chain.push(cur);
-    cur = BY_NAME.get(cur)?.parent ?? null;
-  }
-  return chain;
-}
-
-/** True if `type` is `ancestor` or transitively derives from it. */
-export function isA(type: string, ancestor: string): boolean {
-  return ancestry(type).includes(ancestor);
+  return allClasses().map((c) => ({ name: c.name, parent: c.parents[0] ?? null, comment: c.comment }));
 }
 
 /** Canonical IRI for a schema.org type, for `@type` resolution + links. */

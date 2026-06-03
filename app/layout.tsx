@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Nav } from "@/components/Nav";
 import { JSONLD_CONTEXT, iri } from "@/lib/protocol";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -31,31 +31,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
         />
-        <header className="border-b border-border">
-          <nav className="mx-auto max-w-6xl flex items-center gap-6 px-6 py-4">
-            <Link href="/" className="font-semibold tracking-tight">
-              <span className="text-accent">AGen</span>Next
-            </Link>
-            <div className="flex-1" />
-            <Link href="/" className="text-sm text-muted hover:text-foreground">
-              Explore
-            </Link>
-            <Link href="/stack" className="text-sm text-muted hover:text-foreground">
-              Stack
-            </Link>
-            <Link href="/control" className="text-sm text-muted hover:text-foreground">
-              Control
-            </Link>
-            <Link href="/console" className="text-sm text-muted hover:text-foreground">
-              Console
-            </Link>
-            <a
-              href="/api/graph"
-              className="text-sm text-muted hover:text-foreground font-mono"
-            >
-              API
-            </a>
-          </nav>
+        <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
+          <Nav />
         </header>
         <main className="flex-1">{children}</main>
         <footer className="border-t border-border">

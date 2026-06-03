@@ -134,7 +134,7 @@ export class DataFabric {
 }
 
 /** Derive outgoing edges from a node's reference-valued schema.org props. */
-function edgesFrom(node: GraphNode): Edge[] {
+export function edgesFrom(node: GraphNode): Edge[] {
   const edges: Edge[] = [];
   for (const [prop, value] of Object.entries(node)) {
     if (prop.startsWith("@")) continue;

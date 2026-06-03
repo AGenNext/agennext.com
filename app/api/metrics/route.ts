@@ -1,13 +1,13 @@
 import { getFabric } from "@/lib/fabric";
 import { metrics } from "@/lib/observability";
+import { collectMetrics } from "@/lib/observability/otel";
 import { flags } from "@/lib/flags";
 
 /**
- * OpenMetrics/Prometheus exposition endpoint.
- *
- * Scrapeable by an OpenTelemetry Collector or HertzBeat. Includes platform
- * counters plus a synthetic OpenCost-style cost gauge and fabric gauges
- * refreshed on each scrape.
+ * OpenMetrics/Prometheus exposition, rendered from the OpenTelemetry meter
+ * provider via a pull reader. Scrapeable by an OTel Collector or HertzBeat.
+ * Per-scrape gauges (graph size, readiness, OpenCost-style cost) are refreshed
+ * before collection.
  */
 export async function GET() {
   const health = await getFabric().health();
@@ -20,7 +20,6 @@ export async function GET() {
     "Platform readiness (1=ok, 0.5=degraded, 0=down)",
     health.status === "ok" ? 1 : health.status === "degraded" ? 0.5 : 0,
   );
-  // OpenCost-style allocation signal (illustrative monthly USD estimate).
   metrics.gauge(
     "agennext_estimated_cost_usd",
     "Estimated monthly infrastructure cost (OpenCost-style)",
@@ -31,7 +30,8 @@ export async function GET() {
     provider: flags.providerName(),
   });
 
-  return new Response(metrics.render(), {
+  const body = await collectMetrics();
+  return new Response(body, {
     headers: { "Content-Type": "text/plain; version=0.0.4; charset=utf-8" },
   });
 }

@@ -1,14 +1,20 @@
 /**
- * OpenTelemetry-shaped observability primitives.
+ * Observability facade over the OpenTelemetry API.
  *
- * This is a dependency-free core that mirrors the OTel data model (spans,
- * metrics, structured logs) so the platform is instrumented from day one and
- * can be wired to a real OTel SDK/exporter later without touching call sites.
- * Metrics render in OpenMetrics/Prometheus text format for scraping by an
- * OTel Collector (or HertzBeat).
+ * Call sites use `log` / `metrics` / `span`; the heavy SDK wiring lives in
+ * `otel.ts` and is bootstrapped from `instrumentation.ts`. When no provider is
+ * registered (e.g. unit tests) the OTel API degrades to no-ops, so this module
+ * is always safe to import.
  */
+import {
+  metrics as otelMetrics,
+  trace,
+  SpanStatusCode,
+  type Attributes,
+  type Counter,
+} from "@opentelemetry/api";
 
-type Attributes = Record<string, string | number | boolean>;
+const SCOPE = "agennext";
 
 /* ----------------------------- logging ----------------------------- */
 
@@ -21,7 +27,6 @@ function emit(level: Level, message: string, attrs?: Attributes): void {
     body: message,
     ...attrs,
   };
-  // Structured logs to stdout/stderr — the 12-factor way; a collector tails them.
   const line = JSON.stringify(record);
   if (level === "error") console.error(line);
   else if (level === "warn") console.warn(line);
@@ -37,97 +42,83 @@ export const log = {
 
 /* ----------------------------- metrics ----------------------------- */
 
-interface Series {
-  type: "counter" | "gauge";
-  help: string;
-  values: Map<string, number>; // serialized-labels -> value
+const meter = () => otelMetrics.getMeter(SCOPE);
+
+const counters = new Map<string, Counter>();
+
+/** The Prometheus serializer appends `_total` to monotonic sums itself. */
+function counterName(name: string): string {
+  return name.replace(/_total$/, "");
 }
 
-const registry = new Map<string, Series>();
-
-/** OpenMetrics label-value escaping: backslash first, then quote and newline. */
-function escapeLabelValue(value: string): string {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, "\\n");
+interface GaugeSeries {
+  value: number;
+  attrs: Attributes;
 }
+const gaugeStores = new Map<string, Map<string, GaugeSeries>>();
+const gaugeRegistered = new Set<string>();
 
-function key(labels?: Attributes): string {
-  if (!labels) return "";
-  return Object.keys(labels)
+function attrKey(attrs?: Attributes): string {
+  if (!attrs) return "";
+  return Object.keys(attrs)
     .sort()
-    .map((k) => `${k}="${escapeLabelValue(String(labels[k]))}"`)
+    .map((k) => `${k}=${String(attrs[k])}`)
     .join(",");
-}
-
-function series(name: string, type: Series["type"], help: string): Series {
-  let s = registry.get(name);
-  if (!s) {
-    s = { type, help, values: new Map() };
-    registry.set(name, s);
-  }
-  return s;
 }
 
 export const metrics = {
   counter(name: string, help: string, labels?: Attributes, by = 1): void {
-    const s = series(name, "counter", help);
-    const k = key(labels);
-    s.values.set(k, (s.values.get(k) ?? 0) + by);
-  },
-  gauge(name: string, help: string, value: number, labels?: Attributes): void {
-    const s = series(name, "gauge", help);
-    s.values.set(key(labels), value);
-  },
-  /** Render the registry in OpenMetrics/Prometheus exposition format. */
-  render(): string {
-    const lines: string[] = [];
-    for (const [name, s] of registry) {
-      lines.push(`# HELP ${name} ${s.help}`);
-      lines.push(`# TYPE ${name} ${s.type}`);
-      for (const [labels, value] of s.values) {
-        lines.push(labels ? `${name}{${labels}} ${value}` : `${name} ${value}`);
-      }
+    const key = counterName(name);
+    let c = counters.get(key);
+    if (!c) {
+      c = meter().createCounter(key, { description: help });
+      counters.set(key, c);
     }
-    return lines.join("\n") + "\n";
+    c.add(by, labels);
+  },
+
+  gauge(name: string, help: string, value: number, labels?: Attributes): void {
+    let store = gaugeStores.get(name);
+    if (!store) {
+      store = new Map();
+      gaugeStores.set(name, store);
+    }
+    store.set(attrKey(labels), { value, attrs: labels ?? {} });
+
+    if (!gaugeRegistered.has(name)) {
+      gaugeRegistered.add(name);
+      const g = meter().createObservableGauge(name, { description: help });
+      const series = store; // stable reference observed on each collect
+      g.addCallback((result) => {
+        for (const s of series.values()) result.observe(s.value, s.attrs);
+      });
+    }
   },
 };
 
 /* ------------------------------ traces ----------------------------- */
 
-/**
- * Minimal span: times an operation, records duration as a metric, and logs
- * the outcome. Mirrors `tracer.startActiveSpan` ergonomics.
- */
+/** Run `fn` inside an active OpenTelemetry span. */
 export async function span<T>(
   name: string,
   fn: () => T | Promise<T>,
   attrs?: Attributes,
 ): Promise<T> {
-  const start = performance.now();
-  try {
-    const result = await fn();
-    const ms = performance.now() - start;
-    metrics.counter("agennext_span_total", "Spans by name and status", {
-      span: name,
-      status: "ok",
-    });
-    metrics.gauge("agennext_span_duration_ms", "Last span duration (ms)", ms, {
-      span: name,
-    });
-    log.debug("span.end", { span: name, status: "ok", duration_ms: Math.round(ms), ...attrs });
-    return result;
-  } catch (err) {
-    metrics.counter("agennext_span_total", "Spans by name and status", {
-      span: name,
-      status: "error",
-    });
-    log.error("span.error", {
-      span: name,
-      error: err instanceof Error ? err.message : String(err),
-      ...attrs,
-    });
-    throw err;
-  }
+  return trace.getTracer(SCOPE).startActiveSpan(name, async (s) => {
+    try {
+      if (attrs) s.setAttributes(attrs);
+      const result = await fn();
+      s.setStatus({ code: SpanStatusCode.OK });
+      return result;
+    } catch (err) {
+      if (err instanceof Error) s.recordException(err);
+      s.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    } finally {
+      s.end();
+    }
+  });
 }

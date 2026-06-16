@@ -89,6 +89,22 @@ export class SurrealConnector implements Connector {
     return payload.at(-1)?.result ?? [];
   }
 
+  /**
+   * The SurrealDB record id is the JSON-LD `@id` (via `type::thing`), so writes
+   * are deterministic and idempotent. We drop the synthesized `id` field on read
+   * and rely on `@id` (the protocol's identifier).
+   */
+  private record(id: string): string {
+    return `type::thing('${this.table}', ${lit(id)})`;
+  }
+  private clean(rows: GraphNode[]): GraphNode[] {
+    return rows.map((r) => {
+      const { id, ...rest } = r as GraphNode & { id?: unknown };
+      void id;
+      return rest as GraphNode;
+    });
+  }
+
   async list(query: Query): Promise<GraphNode[]> {
     const where: string[] = [];
     if (query.type) where.push(`${lit(query.type)} IN type`);
@@ -98,21 +114,17 @@ export class SurrealConnector implements Connector {
     const clause = where.length ? ` WHERE ${where.join(" AND ")}` : "";
     const limit = query.limit ? ` LIMIT ${int(query.limit)}` : "";
     const start = query.offset ? ` START ${int(query.offset)}` : "";
-    return this.sql<GraphNode>(`SELECT * FROM ${this.table}${clause}${limit}${start};`);
+    return this.clean(await this.sql<GraphNode>(`SELECT * FROM ${this.table}${clause}${limit}${start};`));
   }
 
   async get(id: string): Promise<GraphNode | null> {
-    const rows = await this.sql<GraphNode>(
-      `SELECT * FROM ${this.table} WHERE id = ${lit(id)} LIMIT 1;`,
-    );
+    const rows = this.clean(await this.sql<GraphNode>(`SELECT * FROM ${this.record(id)};`));
     return rows[0] ?? null;
   }
 
   async upsert(node: GraphNode): Promise<GraphNode> {
-    // JSON.stringify yields a fully-escaped object literal; id is escaped too.
-    await this.sql(
-      `UPSERT ${this.table} CONTENT ${JSON.stringify(node)} WHERE id = ${lit(node["@id"])};`,
-    );
+    // Target a deterministic record id derived from @id — idempotent, no dupes.
+    await this.sql(`UPSERT ${this.record(node["@id"])} CONTENT ${JSON.stringify(node)};`);
     return node;
   }
 

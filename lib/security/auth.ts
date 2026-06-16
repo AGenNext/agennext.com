@@ -4,11 +4,13 @@ import { log } from "@/lib/observability";
 /**
  * Request authentication → a SPIFFE principal.
  *
- * In a SPIFFE deployment, mTLS terminates at the mesh/proxy (Envoy + SPIRE)
- * and the verified peer identity is forwarded to the app. We therefore trust
- * a mesh-injected identity header, or a JWT-SVID bearer whose signature the
- * mesh has already verified. Cryptographic verification is the mesh's job;
- * this layer parses the asserted identity and enforces the trust domain.
+ * SECURITY: a forwarded identity (an `X-Spiffe-Id` header or a JWT-SVID bearer)
+ * is only as trustworthy as the proxy in front of the app. A header is trivially
+ * forgeable, and we do not verify JWT signatures here. So forwarded identity is
+ * **ignored by default** and only honored when `TRUST_FORWARDED_IDENTITY=true` —
+ * which an operator must set ONLY after ensuring an upstream mesh/proxy (Envoy +
+ * SPIRE) strips client-supplied copies of these headers and verifies SVIDs.
+ * `DEV_SPIFFE_ID` is an operator-set (not client-controllable) local escape hatch.
  *
  * Returns `null` for anonymous callers (no/!valid identity).
  */
@@ -23,7 +25,13 @@ interface JwtClaims {
   exp?: number;
 }
 
-/** Decode (NOT verify) a JWT payload. Verification is delegated to the mesh. */
+/** Whether to trust proxy-forwarded identity (header / JWT-SVID). Off by default. */
+function forwardedIdentityTrusted(): boolean {
+  const v = process.env.TRUST_FORWARDED_IDENTITY;
+  return v === "true" || v === "1";
+}
+
+/** Decode (NOT verify) a JWT payload. Only used when forwarded identity is trusted. */
 function decodeJwtClaims(token: string): JwtClaims | null {
   const parts = token.split(".");
   if (parts.length !== 3) return null;
@@ -49,24 +57,26 @@ function accept(value: string, via: Principal["via"]): Principal | null {
 }
 
 export function authenticate(req: Request): Principal | null {
-  // 1. Mesh-injected, already-verified peer identity.
-  const header = req.headers.get("x-spiffe-id");
-  if (header) {
-    const p = accept(header, "header");
-    if (p) return p;
-  }
-
-  // 2. JWT-SVID bearer (signature pre-verified by the mesh/SPIRE).
-  const authz = req.headers.get("authorization");
-  if (authz?.startsWith("Bearer ")) {
-    const claims = decodeJwtClaims(authz.slice(7));
-    if (claims?.sub && (!claims.exp || claims.exp * 1000 > Date.now())) {
-      const p = accept(claims.sub, "jwt-svid");
+  // Proxy-forwarded identity is forgeable; honor it only when explicitly trusted.
+  if (forwardedIdentityTrusted()) {
+    // Mesh-injected peer identity (the proxy must strip client-supplied copies).
+    const header = req.headers.get("x-spiffe-id");
+    if (header) {
+      const p = accept(header, "header");
       if (p) return p;
+    }
+    // JWT-SVID bearer (signature verified upstream by the mesh/SPIRE).
+    const authz = req.headers.get("authorization");
+    if (authz?.startsWith("Bearer ")) {
+      const claims = decodeJwtClaims(authz.slice(7));
+      if (claims?.sub && (!claims.exp || claims.exp * 1000 > Date.now())) {
+        const p = accept(claims.sub, "jwt-svid");
+        if (p) return p;
+      }
     }
   }
 
-  // 3. Dev escape hatch for local runs without a mesh.
+  // Operator-set local escape hatch (not client-controllable).
   const dev = process.env.DEV_SPIFFE_ID;
   if (dev) {
     const p = accept(dev, "dev");

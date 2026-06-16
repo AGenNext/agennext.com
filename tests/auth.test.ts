@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect } from "vitest";
 import { authenticate } from "@/lib/security/auth";
 import { can, authorize, AuthzError } from "@/lib/security/authz";
 import { parseSpiffeId } from "@/lib/security/spiffe";
@@ -18,6 +18,19 @@ function jwtSvid(sub: string, ttlSeconds = 3600): string {
 }
 
 describe("authenticate", () => {
+  // Forwarded identity is only honored when the deployment opts in.
+  beforeEach(() => {
+    process.env.TRUST_FORWARDED_IDENTITY = "true";
+  });
+  afterEach(() => {
+    delete process.env.TRUST_FORWARDED_IDENTITY;
+  });
+
+  it("ignores forwarded identity unless explicitly trusted", () => {
+    delete process.env.TRUST_FORWARDED_IDENTITY;
+    expect(authenticate(reqWith({ "x-spiffe-id": WRITER }))).toBeNull();
+  });
+
   it("accepts a mesh-injected SPIFFE id in the trust domain", () => {
     const p = authenticate(reqWith({ "x-spiffe-id": WRITER }));
     expect(p?.id.toString()).toBe(WRITER);

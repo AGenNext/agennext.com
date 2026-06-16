@@ -64,8 +64,11 @@ app works in JSON-LD. The bridge is covered by a binary round-trip test.
 
 - **AuthN (SPIFFE)** — the caller's identity is a SPIFFE ID asserted by the
   mesh: either an `X-Spiffe-Id` header (set after mTLS) or a JWT-SVID
-  `Authorization: Bearer` token. The trust domain is enforced; foreign
-  identities are rejected. `DEV_SPIFFE_ID` provides a local escape hatch.
+  `Authorization: Bearer` token. Because both are forgeable at the app layer,
+  forwarded identity is **ignored unless `TRUST_FORWARDED_IDENTITY=true`** — set
+  this only when an upstream proxy strips client-supplied copies and verifies
+  SVIDs. The trust domain is enforced; foreign identities are rejected.
+  `DEV_SPIFFE_ID` is an operator-set (non-forgeable) local escape hatch.
 - **AuthZ (Permify/ReBAC)** — permissions map to relations on the `graph`
   object: `graph:read` ← reader|writer|admin, `graph:write` ← writer|admin.
   Writers are configured via `AUTHZ_WRITERS` (plus the default API writer

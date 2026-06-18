@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: this workflow only needs to read the repo contents.
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      # Manual checkout — avoids third-party actions in case the org Actions
+      # policy restricts the allowed actions list.
+      - name: Checkout
+        run: |
+          git init -q .
+          git remote add origin "https://github.com/${{ github.repository }}.git"
+          git fetch -q --depth 1 origin "${{ github.ref }}"
+          git checkout -q --force FETCH_HEAD
+      - name: Toolchain
+        run: node --version && npm --version
+      - name: Install
+        run: npm ci
+      - name: Protobuf bindings are in sync
+        run: npm run proto:gen && git diff --exit-code lib/protocol/gen
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  integration:
+    runs-on: ubuntu-latest # GitHub-hosted runners include Docker for Testcontainers
+    steps:
+      - name: Checkout
+        run: |
+          git init -q .
+          git remote add origin "https://github.com/${{ github.repository }}.git"
+          git fetch -q --depth 1 origin "${{ github.ref }}"
+          git checkout -q --force FETCH_HEAD
+      - name: Install
+        run: npm ci
+      - name: Integration tests (SurrealDB via Testcontainers)
+        run: npm run test:integration

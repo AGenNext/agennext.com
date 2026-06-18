@@ -1,0 +1,17 @@
+# The AgennextPlatform composite resource (Crossplane v2, namespaced).
+# An operator applies this directly — there is no separate Claim in v2 — and the
+# control plane composes and reconciles it. This is the entire public API
+# surface for running AGenNext on a cluster.
+apiVersion: platform.agennext.com/v1alpha1
+kind: AgennextPlatform
+metadata:
+  name: agennext
+  namespace: default
+spec:
+  parameters:
+    image: ghcr.io/agennext/agennext.com:latest
+    replicas: 3
+    connector: surreal
+    surrealUrl: http://surrealdb:8000
+    writeApi: true
+    trustDomain: agennext.com

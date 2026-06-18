@@ -19,7 +19,7 @@ jobs:
         run: |
           git init -q .
           git remote add origin "https://github.com/${{ github.repository }}.git"
-          git fetch -q --depth 1 origin "${{ github.event.pull_request.head.sha || github.sha }}"
+          git fetch -q --depth 1 origin "${{ github.ref }}"
           git checkout -q --force FETCH_HEAD
       - name: Toolchain
         run: node --version && npm --version
@@ -41,7 +41,7 @@ jobs:
         run: |
           git init -q .
           git remote add origin "https://github.com/${{ github.repository }}.git"
-          git fetch -q --depth 1 origin "${{ github.event.pull_request.head.sha || github.sha }}"
+          git fetch -q --depth 1 origin "${{ github.ref }}"
           git checkout -q --force FETCH_HEAD
       - name: Install
         run: npm ci

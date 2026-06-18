@@ -106,8 +106,11 @@ export class SurrealConnector implements Connector {
   }
 
   async list(query: Query): Promise<GraphNode[]> {
+    // The JSON-LD `@type` field needs a backtick identifier in SurrealQL, and
+    // it may be a string or an array — flatten so `IN` matches both.
+    const TYPE_FIELD = "`@type`";
     const where: string[] = [];
-    if (query.type) where.push(`${lit(query.type)} IN type`);
+    if (query.type) where.push(`${lit(query.type)} IN array::flatten([${TYPE_FIELD}])`);
     if (query.text) {
       where.push(`string::lowercase(name ?? '') CONTAINS string::lowercase(${lit(query.text)})`);
     }

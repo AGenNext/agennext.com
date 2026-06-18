@@ -13,26 +13,37 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      # Fail if the generated protobuf bindings drift from the .proto source.
-      - run: npm run proto:gen
-      - run: git diff --exit-code lib/protocol/gen
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+      # Manual checkout — avoids third-party actions in case the org Actions
+      # policy restricts the allowed actions list.
+      - name: Checkout
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git fetch -q --depth 1 origin "${{ github.event.pull_request.head.sha || github.sha }}"
+          git checkout -q --force FETCH_HEAD
+      - name: Toolchain
+        run: node --version && npm --version
+      - name: Install
+        run: npm ci
+      - name: Protobuf bindings are in sync
+        run: npm run proto:gen && git diff --exit-code lib/protocol/gen
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
 
   integration:
     runs-on: ubuntu-latest # GitHub-hosted runners include Docker for Testcontainers
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run test:integration
+      - name: Checkout
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git fetch -q --depth 1 origin "${{ github.event.pull_request.head.sha || github.sha }}"
+          git checkout -q --force FETCH_HEAD
+      - name: Install
+        run: npm ci
+      - name: Integration tests (SurrealDB via Testcontainers)
+        run: npm run test:integration
